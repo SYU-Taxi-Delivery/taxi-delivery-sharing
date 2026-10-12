@@ -1,0 +1,43 @@
+@baseUrl = http://127.0.0.1:8080
+@postId = 1
+
+### 1. 먼저 실행: 쿠키는 IntelliJ HTTP Client가 보관
+GET {{baseUrl}}/api/csrf
+Authorization: Basic student1 demo-pass
+
+> {% client.global.set("csrfToken", response.body.data.token); %}
+
+### 2. 최초 참여 201 / 재참여 200 (Body 없음)
+POST {{baseUrl}}/api/posts/{{postId}}/participants
+Authorization: Basic student1 demo-pass
+X-XSRF-TOKEN: {{csrfToken}}
+
+### 3. 내 상태
+GET {{baseUrl}}/api/posts/{{postId}}/participants/me
+Authorization: Basic student1 demo-pass
+
+### 4. 참여 중 명단 조회
+GET {{baseUrl}}/api/posts/{{postId}}/participants
+Authorization: Basic student1 demo-pass
+
+### 5. 참여 취소
+DELETE {{baseUrl}}/api/posts/{{postId}}/participants
+Authorization: Basic student1 demo-pass
+X-XSRF-TOKEN: {{csrfToken}}
+
+### 6. 취소 후 명단 조회: 403
+GET {{baseUrl}}/api/posts/{{postId}}/participants
+Authorization: Basic student1 demo-pass
+
+### 7. 재참여: 기존 ID 유지
+POST {{baseUrl}}/api/posts/{{postId}}/participants
+Authorization: Basic student1 demo-pass
+X-XSRF-TOKEN: {{csrfToken}}
+
+### 8. 본인 내역
+GET {{baseUrl}}/api/users/me/participations?page=0&size=20&status=JOINED
+Authorization: Basic student1 demo-pass
+
+### 작성자 명단 조회
+GET {{baseUrl}}/api/posts/{{postId}}/participants
+Authorization: Basic author demo-pass

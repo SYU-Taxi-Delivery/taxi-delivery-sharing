@@ -17,7 +17,19 @@ repositories {
 	mavenCentral()
 }
 
+configurations {
+    mockitoAgent
+}
+
 dependencies {
+    mockitoAgent('org.mockito:mockito-core') { transitive = false }
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    runtimeOnly 'org.flywaydb:flyway-mysql'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+    testImplementation 'org.testcontainers:testcontainers-mysql'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
@@ -37,4 +49,32 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+    systemProperty 'user.timezone', 'UTC'
+    exclude '**/*MySqlIT.class'
+}
+
+tasks.register('copyMockitoAgent', Copy) {
+    from configurations.mockitoAgent
+    into layout.projectDirectory.dir('work/test-agent')
+    rename { 'mockito.jar' }
+}
+
+tasks.withType(Test).configureEach {
+    dependsOn 'copyMockitoAgent'
+    jvmArgs '-javaagent:work/test-agent/mockito.jar'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.register('mysqlTest', Test) {
+    description = 'Run post and participation contracts against disposable MySQL 8.4 (Docker required).'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    include '**/*MySqlIT.class'
+    systemProperty 'user.timezone', 'UTC'
 }

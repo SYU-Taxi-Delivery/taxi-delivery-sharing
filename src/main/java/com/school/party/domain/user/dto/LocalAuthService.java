@@ -21,14 +21,14 @@ public class LocalAuthService {
     private final LocalCredentialRepository localCredentialRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Transactional
+    @Transactional(noRollbackFor = {IllegalArgumentException.class, IllegalStateException.class})
     public User authenticateLocal(LocalLoginRequest request) {
         // 학번 또는 이메일로 사용자 조회
         User user = userRepository.findByStudentNo(request.getIdentifier())
                 .orElseGet(() -> userRepository.findBySchoolEmail(request.getIdentifier())
                         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자 계정입니다.")));
 
-        LocalCredential credential = localCredentialRepository.findByUserId(user.getId())
+        LocalCredential credential = localCredentialRepository.findByUserIdForUpdate(user.getId())
                 .orElseThrow(() -> new IllegalArgumentException("자체 인증 정보가 존재하지 않습니다."));
 
         // 계정 잠금 확인

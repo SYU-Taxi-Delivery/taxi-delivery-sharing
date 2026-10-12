@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:community-tests;MODE=MySQL;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=10000
+    username: sa
+    password:
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+logging:
+  level:
+    com.school.party.domain.community: WARN
