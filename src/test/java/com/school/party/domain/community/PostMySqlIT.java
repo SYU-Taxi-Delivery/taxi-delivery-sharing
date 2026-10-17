@@ -12,7 +12,8 @@ class PostMySqlIT extends PostContract {
     @Container static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
     @DynamicPropertySource static void database(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
-        registry.add("spring.datasource.username", MYSQL::getUsername);
+        // The disposable container also observes author-row waits in performance_schema.
+        registry.add("spring.datasource.username", () -> "root");
         registry.add("spring.datasource.password", MYSQL::getPassword);
     }
 }

@@ -3,11 +3,13 @@ import com.school.party.domain.user.entity.User;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Check;
 import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.time.Duration;
 
 @Entity @Table(name = "post")
+@Check(name = "ck_post_capacity", constraints = "(type='TAXI' AND capacity BETWEEN 2 AND 4) OR (type='DELIVERY' AND capacity BETWEEN 2 AND 10)")
 public class Post {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "author_id", nullable = false) private User author;

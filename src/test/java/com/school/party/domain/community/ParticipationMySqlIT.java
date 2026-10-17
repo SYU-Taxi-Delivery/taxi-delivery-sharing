@@ -12,7 +12,8 @@ class ParticipationMySqlIT extends ParticipationContract {
     @Container static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
     @DynamicPropertySource static void database(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
-        registry.add("spring.datasource.username", MYSQL::getUsername);
+        // This disposable container also observes performance_schema row-lock waits.
+        registry.add("spring.datasource.username", () -> "root");
         registry.add("spring.datasource.password", MYSQL::getPassword);
     }
 }

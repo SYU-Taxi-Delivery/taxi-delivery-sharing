@@ -12,6 +12,10 @@ import com.school.party.domain.community.repository.*;
 import com.school.party.domain.community.security.CampusUser;
 import com.school.party.domain.community.service.*;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -40,6 +44,7 @@ public abstract class PostContract {
     @Autowired MutableClock clock;
     @Autowired MockMvc mvc;
     @Autowired PlatformTransactionManager transactionManager;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     User author, student, admin;
 
     private static User fixtureUser(String name, Role role) {
@@ -83,6 +88,13 @@ public abstract class PostContract {
         assertThat(p.viewer().canEditCore()).isTrue(); assertThat(p.communicationUrl()).isEqualTo("https://example.com/room");
         assertThat(participations.count()).isZero(); assertThat(p.referenceTime().getOffset()).isEqualTo(ZoneOffset.ofHours(9));
     }
+    @Test void creationRejectsIncompatibleOuterTransactionBeforeWriting() {
+        var transaction = new TransactionTemplate(transactionManager);
+        transaction.setIsolationLevel(org.springframework.transaction.TransactionDefinition.ISOLATION_REPEATABLE_READ);
+        assertThatThrownBy(() -> transaction.executeWithoutResult(tx -> service.create(author.getId(), taxi(TIME))))
+            .isInstanceOf(org.springframework.transaction.IllegalTransactionStateException.class);
+        assertThat(posts.count()).isZero();
+    }
     @Test void deliveryPersistsItsFieldsOnly() {
         var p = service.create(author.getId(), delivery(TIME)).data();
         assertThat(p.restaurantName()).isEqualTo("음식점"); assertThat(p.pickupLocation()).isEqualTo("정문");
@@ -124,6 +136,72 @@ public abstract class PostContract {
         assertThat(posts.countConflicts(author.getId(), 0, TIME, TIME)).isZero();
         assertThat(service.list(student.getId(), 0, 20, null, "FINISHED").data().totalElements()).isEqualTo(1);
     }
+    @ParameterizedTest @CsvSource({"TAXI,TAXI", "TAXI,DELIVERY", "DELIVERY,TAXI", "DELIVERY,DELIVERY"})
+    void DUP_creationChecksBothTypesForSameAuthorAndTime(PostType occupiedType, PostType requestedType) {
+        service.create(author.getId(), typedRequest(occupiedType, TIME));
+        rejects(POST_TIME_CONFLICT, () -> service.create(author.getId(), typedRequest(requestedType, TIME)));
+        assertThat(posts.count()).isEqualTo(1);
+        assertThat(service.create(student.getId(), typedRequest(requestedType, TIME)).data().type()).isEqualTo(requestedType);
+    }
+    @ParameterizedTest @CsvSource({"TAXI,TAXI", "TAXI,DELIVERY", "DELIVERY,TAXI", "DELIVERY,DELIVERY"})
+    void DUP_timeChangesCheckBothTypesAndPreserveRejectedPost(PostType occupiedType, PostType movingType) throws Exception {
+        Instant target = TIME.plusSeconds(60);
+        service.create(author.getId(), typedRequest(occupiedType, target));
+        long moving = Long.parseLong(service.create(author.getId(), typedRequest(movingType, TIME)).data().postId());
+        String originalTitle = posts.findById(moving).orElseThrow().getTitle();
+        rejects(POST_TIME_CONFLICT, () -> service.update(moving, author.getId(), edit(mapper.writeValueAsString(Map.of(
+            "referenceTime", target.atOffset(ZoneOffset.UTC).toString(), "title", "충돌한 수정")))));
+        Post saved = posts.findById(moving).orElseThrow();
+        assertThat(saved.getReferenceTime()).isEqualTo(TIME);
+        assertThat(saved.getTitle()).isEqualTo(originalTitle);
+        assertThat(saved.getUpdatedAt()).isEqualTo(NOW);
+        assertThat(posts.countConflicts(author.getId(), 0, target, NOW)).isEqualTo(1);
+    }
+    @ParameterizedTest @EnumSource(value = PostStatus.class, names = {"FULL", "CLOSED"})
+    void DUP_timeChangeConflictsWithFullOrClosedRecruitment(PostStatus occupiedStatus) throws Exception {
+        Instant target = TIME.plusSeconds(60);
+        long occupied = Long.parseLong(service.create(author.getId(), taxi(target)).data().postId());
+        state(occupied, occupiedStatus);
+        long moving = Long.parseLong(service.create(author.getId(), delivery(TIME)).data().postId());
+        rejects(POST_TIME_CONFLICT, () -> service.update(moving, author.getId(), edit(mapper.writeValueAsString(Map.of(
+            "referenceTime", target.atOffset(ZoneOffset.UTC).toString())))));
+        assertThat(posts.findById(moving).orElseThrow().getReferenceTime()).isEqualTo(TIME);
+    }
+    @ParameterizedTest @EnumSource(value = PostStatus.class, names = {"CANCELLED", "FINISHED", "REMOVED"})
+    void DUP_timeChangeExcludesTerminalRecruitments(PostStatus terminalStatus) throws Exception {
+        Instant target = TIME.plusSeconds(60);
+        long occupied = Long.parseLong(service.create(author.getId(), taxi(target)).data().postId());
+        if (terminalStatus == PostStatus.REMOVED) lifecycle.remove(occupied, admin.getId());
+        else state(occupied, terminalStatus);
+        long moving = Long.parseLong(service.create(author.getId(), delivery(TIME)).data().postId());
+        var result = service.update(moving, author.getId(), edit(mapper.writeValueAsString(Map.of(
+            "referenceTime", target.atOffset(ZoneOffset.UTC).toString())))).data();
+        assertThat(result.referenceTime().toInstant()).isEqualTo(target);
+        assertThat(posts.countConflicts(author.getId(), moving, target, NOW)).isZero();
+        assertThat(posts.countConflicts(author.getId(), 0, target, NOW)).isEqualTo(1);
+    }
+    @ParameterizedTest @EnumSource(value = PostStatus.class, names = {"OPEN", "FULL", "CLOSED"})
+    void DUP_effectivelyFinishedRowsAreExcludedAtReferenceTimeWithoutStatusWrite(PostStatus storedStatus) {
+        long id = create();
+        if (storedStatus != PostStatus.OPEN) state(id, storedStatus);
+        assertThat(posts.countConflicts(author.getId(), 0, TIME, TIME.minusSeconds(1))).isEqualTo(1);
+        assertThat(posts.countConflicts(author.getId(), 0, TIME, TIME)).isZero();
+        assertThat(posts.countConflicts(author.getId(), 0, TIME, TIME.plusSeconds(1))).isZero();
+        clock.set(TIME);
+        assertThat(service.get(id, student.getId()).data().postStatus()).isEqualTo(PostStatus.FINISHED);
+        assertThat(posts.findById(id).orElseThrow().getStatus()).isEqualTo(storedStatus);
+        // Exclusion from duplicate checks never permits a new recruitment at a past reference time.
+        rejects(POST_REFERENCE_TIME_TOO_EARLY, () -> service.create(author.getId(), delivery(TIME)));
+    }
+    @Test void DUP_differentAuthorMayMoveToAnOccupiedReferenceTime() throws Exception {
+        service.create(author.getId(), taxi(TIME));
+        long moving = Long.parseLong(service.create(student.getId(), delivery(TIME.plusSeconds(60))).data().postId());
+        assertThat(service.update(moving, student.getId(), edit(mapper.writeValueAsString(Map.of(
+            "referenceTime", TIME.atOffset(ZoneOffset.UTC).toString())))).data().referenceTime().toInstant()).isEqualTo(TIME);
+        assertThat(posts.countConflicts(author.getId(), 0, TIME, NOW)).isEqualTo(1);
+        assertThat(posts.countConflicts(student.getId(), 0, TIME, NOW)).isEqualTo(1);
+    }
+    private CreatePostRequest typedRequest(PostType type, Instant at) { return type == PostType.TAXI ? taxi(at) : delivery(at); }
     @Test void authorCanEditCoreWhenNoJoinedMembers() throws Exception {
         long id = create(); Instant later = TIME.plusSeconds(60);
         var p = service.update(id, author.getId(), edit("{\"title\":\" 수정 제목 \",\"capacity\":3,\"destination\":\"후문\",\"referenceTime\":\"" + later.atOffset(ZoneOffset.UTC) + "\"}")).data();
@@ -172,6 +250,60 @@ public abstract class PostContract {
     @Test void unchangedCoreValuesAreAllowedAndDoNotReapplyCreationDeadline() throws Exception {
         long id = create(); participation.join(id, student.getId()); clock.set(TIME.minusSeconds(60));
         assertThat(service.update(id, author.getId(), edit("{\"capacity\":4,\"referenceTime\":\"2026-10-12T18:00:00+09:00\",\"title\":\"마감 직전 안내\"}")).data().title()).isEqualTo("마감 직전 안내");
+    }
+    @ParameterizedTest(name = "title-only PATCH with {0} seconds until existing reference time succeeds")
+    @ValueSource(ints = {600, 599, 1})
+    void titleOnlyUpdateDoesNotRecheckExistingReferenceTimeWithinTenMinutes(int secondsRemaining) throws Exception {
+        long id = create();
+        clock.set(TIME.minusSeconds(secondsRemaining));
+        mvc.perform(patch("/api/posts/" + id).with(as(author)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"title\":\"출발 전 안내 수정\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.title").value("출발 전 안내 수정"));
+        assertThat(posts.findById(id).orElseThrow().getReferenceTime()).isEqualTo(TIME);
+    }
+    @Test void otherNonCoreFieldsRemainEditableWithinTenMinutesOfClosedRecruitment() throws Exception {
+        long id = Long.parseLong(service.create(author.getId(), delivery(TIME)).data().postId());
+        participation.join(id, student.getId());
+        lifecycle.close(id, author.getId());
+        clock.set(TIME.minusSeconds(300));
+        var detail = service.update(id, author.getId(), edit(
+            "{\"content\":\"수령 안내 수정\",\"communicationUrl\":\"https://example.com/new-room\",\"orderGuide\":\"메뉴 안내 수정\"}")).data();
+        assertThat(detail.content()).isEqualTo("수령 안내 수정");
+        assertThat(detail.communicationUrl()).isEqualTo("https://example.com/new-room");
+        assertThat(detail.orderGuide()).isEqualTo("메뉴 안내 수정");
+        assertThat(detail.postStatus()).isEqualTo(PostStatus.CLOSED);
+        assertThat(detail.referenceTime().toInstant()).isEqualTo(TIME);
+    }
+    @Test void sameReferenceInstantWithDifferentOffsetIsNotATimeChange() throws Exception {
+        long id = create(); participation.join(id, student.getId());
+        clock.set(TIME.minusSeconds(60));
+        var detail = service.update(id, author.getId(), edit(mapper.writeValueAsString(Map.of(
+            "referenceTime", TIME.atOffset(ZoneOffset.UTC).toString(), "title", "동일 시각 안내 수정")))).data();
+        assertThat(detail.title()).isEqualTo("동일 시각 안내 수정");
+        assertThat(detail.referenceTime().toInstant()).isEqualTo(TIME);
+    }
+    @ParameterizedTest(name = "changed reference time {0} seconds ahead must be strictly beyond ten minutes")
+    @ValueSource(ints = {601, 600, 599})
+    void changedReferenceTimeMustBeStrictlyMoreThanTenMinutesAhead(int secondsUntilNewReference) throws Exception {
+        long id = create();
+        Instant newReference = TIME.plusSeconds(60);
+        clock.set(newReference.minusSeconds(secondsUntilNewReference));
+        var request = patch("/api/posts/" + id).with(as(author)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+            .content(mapper.writeValueAsString(Map.of("referenceTime", newReference.atOffset(ZoneOffset.UTC).toString(),
+                "title", "기준시각 변경 안내")));
+        if (secondsUntilNewReference > 600) {
+            mvc.perform(request).andExpect(status().isOk());
+            Post saved = posts.findById(id).orElseThrow();
+            assertThat(saved.getReferenceTime()).isEqualTo(newReference);
+            assertThat(saved.getTitle()).isEqualTo("기준시각 변경 안내");
+        } else {
+            mvc.perform(request).andExpect(status().is(POST_REFERENCE_TIME_TOO_EARLY.status().value()))
+                .andExpect(jsonPath("$.error.code").value("POST_REFERENCE_TIME_TOO_EARLY"));
+            Post saved = posts.findById(id).orElseThrow();
+            assertThat(saved.getReferenceTime()).isEqualTo(TIME);
+            assertThat(saved.getTitle()).isEqualTo("택시 동승");
+            assertThat(saved.getUpdatedAt()).isEqualTo(NOW);
+        }
     }
     @Test void authorOnlyAndNoChangesAfterCancelFinishOrRemove() throws Exception {
         long id = create();
@@ -342,6 +474,73 @@ public abstract class PostContract {
             () -> outcome(() -> service.create(author.getId(), delivery(target))));
         assertThat(results).containsExactlyInAnyOrder("OK", "POST_TIME_CONFLICT");
         assertThat(posts.countConflicts(author.getId(), 0, target, NOW)).isEqualTo(1);
+    }
+    @ParameterizedTest @EnumSource(PostType.class)
+    void DUP_firstCreationsWaitOnSameAuthorRowAcrossTypes(PostType firstType) throws Exception {
+        PostType secondType = firstType == PostType.TAXI ? PostType.DELIVERY : PostType.TAXI;
+        assertThat(orderedAuthorMutation(() -> service.create(author.getId(), typedRequest(firstType, TIME)),
+            () -> service.create(author.getId(), typedRequest(secondType, TIME)))).isEqualTo("POST_TIME_CONFLICT");
+        assertThat(posts.count()).isEqualTo(1);
+        assertThat(posts.countConflicts(author.getId(), 0, TIME, NOW)).isEqualTo(1);
+    }
+    @ParameterizedTest @ValueSource(booleans = {true, false})
+    void DUP_creationAndTimeChangeUseSameAuthorLockInBothOrders(boolean creationFirst) throws Exception {
+        long moving = create(); Instant target = TIME.plusSeconds(60);
+        UpdatePostRequest change = edit(mapper.writeValueAsString(Map.of("referenceTime", target.atOffset(ZoneOffset.UTC).toString())));
+        Runnable creation = () -> service.create(author.getId(), delivery(target));
+        Runnable update = () -> service.update(moving, author.getId(), change);
+        assertThat(orderedAuthorMutation(creationFirst ? creation : update, creationFirst ? update : creation)).isEqualTo("POST_TIME_CONFLICT");
+        assertThat(posts.countConflicts(author.getId(), 0, target, NOW)).isEqualTo(1);
+        assertThat(posts.findById(moving).orElseThrow().getReferenceTime()).isEqualTo(creationFirst ? TIME : target);
+        assertThat(posts.count()).isEqualTo(creationFirst ? 2 : 1);
+    }
+    @ParameterizedTest @ValueSource(booleans = {true, false})
+    void DUP_twoTimeChangesToSameTargetAreSerializedAcrossPostTypes(boolean taxiFirst) throws Exception {
+        long taxiId = create();
+        long deliveryId = Long.parseLong(service.create(author.getId(), delivery(TIME.plusSeconds(60))).data().postId());
+        Instant target = TIME.plusSeconds(120);
+        UpdatePostRequest change = edit(mapper.writeValueAsString(Map.of("referenceTime", target.atOffset(ZoneOffset.UTC).toString())));
+        Runnable taxiUpdate = () -> service.update(taxiId, author.getId(), change);
+        Runnable deliveryUpdate = () -> service.update(deliveryId, author.getId(), change);
+        assertThat(orderedAuthorMutation(taxiFirst ? taxiUpdate : deliveryUpdate, taxiFirst ? deliveryUpdate : taxiUpdate)).isEqualTo("POST_TIME_CONFLICT");
+        assertThat(posts.countConflicts(author.getId(), 0, target, NOW)).isEqualTo(1);
+        assertThat(posts.findById(taxiId).orElseThrow().getReferenceTime()).isEqualTo(taxiFirst ? target : TIME);
+        assertThat(posts.findById(deliveryId).orElseThrow().getReferenceTime()).isEqualTo(taxiFirst ? TIME.plusSeconds(60) : target);
+    }
+    @Test void DUP_differentAuthorsCanCommitSameTimeWhileFirstAuthorIsLocked() throws Exception {
+        CountDownLatch held = new CountDownLatch(1), release = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> first = pool.submit(() -> authorTransaction().executeWithoutResult(tx -> {
+                service.create(author.getId(), taxi(TIME)); held.countDown(); await(release);
+            }));
+            assertThat(held.await(10, TimeUnit.SECONDS)).isTrue();
+            Future<String> second = pool.submit(() -> outcome(() -> service.create(student.getId(), delivery(TIME))));
+            assertThat(second.get(5, TimeUnit.SECONDS)).isEqualTo("OK");
+            release.countDown(); first.get(10, TimeUnit.SECONDS);
+            assertThat(posts.count()).isEqualTo(2);
+        } finally { release.countDown(); pool.shutdownNow(); pool.awaitTermination(10, TimeUnit.SECONDS); }
+    }
+    private TransactionTemplate authorTransaction() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setIsolationLevel(org.springframework.transaction.TransactionDefinition.ISOLATION_READ_COMMITTED);
+        return transaction;
+    }
+    private String orderedAuthorMutation(Runnable firstAction, Runnable waitingAction) throws Exception {
+        CountDownLatch held = new CountDownLatch(1), started = new CountDownLatch(1), release = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> first = pool.submit(() -> authorTransaction().executeWithoutResult(tx -> {
+                users.findByIdForUpdate(author.getId()).orElseThrow(); firstAction.run(); posts.flush();
+                held.countDown(); await(release);
+            }));
+            assertThat(held.await(10, TimeUnit.SECONDS)).isTrue();
+            Future<String> waiting = pool.submit(() -> { started.countDown(); return outcome(waitingAction::run); });
+            assertThat(started.await(10, TimeUnit.SECONDS)).isTrue();
+            DatabaseLockAssertions.awaitPrimaryRowWait(jdbc, "users", waiting);
+            release.countDown(); first.get(10, TimeUnit.SECONDS);
+            return waiting.get(10, TimeUnit.SECONDS);
+        } finally { release.countDown(); pool.shutdownNow(); pool.awaitTermination(10, TimeUnit.SECONDS); }
     }
     @Test void participantCommittedWhileEditWaitsLocksCoreFields() throws Exception {
         long id = create(); CountDownLatch held = new CountDownLatch(1), release = new CountDownLatch(1);

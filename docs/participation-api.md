@@ -151,3 +151,7 @@ details가 없으면 생략합니다. 오류 응답에는 data가 없습니다.
 join의 오류 우선순위는 사용자 확인 → POST 존재/삭제 → 취소/종료 → FULL/CLOSED → T-10 → 작성자 → 중복 참여 → 실제 인원 검사입니다. 따라서 FULL 모집의 기존 참가자 재신청은 POST_FULL입니다. cancel은 사용자/POST → 취소/종료 → T-10 → 작성자 → 본인 기록 → 이미 취소 순서입니다.
 
 503 또는 응답 유실 시 먼저 `/participants/me`로 최종 상태를 확인합니다. 단순 재전송은 ALREADY_JOINED/ALREADY_CANCELLED를 반환할 수 있습니다. 별도 Idempotency-Key 저장 기능은 구현하지 않았습니다.
+
+## 동시성 및 트랜잭션
+
+참여·취소·연동된 모집 취소/삭제는 공통 POST 행의 DB 쓰기 잠금을 사용합니다. 잠금 후 최신 POST와 본인 참여 레코드를 읽고 시각·상태·관련 인원을 검증하며 같은 트랜잭션에서 함께 변경합니다. UNIQUE(post_id,user_id), FK, CHECK 제약조건도 적용합니다. 상위 트랜잭션이 있다면 실제 READ_COMMITTED 쓰기 조건이어야 합니다. [경합·롤백 재검증 결과와 팀 통합 계약](revalidation/concurrency-transaction-2026-10-15.md)을 참고합니다.

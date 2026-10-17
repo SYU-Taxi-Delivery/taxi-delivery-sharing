@@ -11,6 +11,8 @@ import com.school.party.domain.community.repository.*;
 import com.school.party.domain.community.security.CampusUser;
 import com.school.party.domain.community.service.*;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
@@ -233,12 +235,14 @@ public abstract class ParticipationContract {
         assertThat(participations.count()).isEqualTo(1);
     }
     @Test void POST006_joinRacingRecruitmentCancelLeavesNoJoinedMembers() throws Exception {
-        compete(List.of(() -> attempt(() -> service.join(id(), actor())), () -> attempt(() -> lifecycle.cancelRecruitment(id(), author.getId()))));
+        List<String> outcomes = compete(List.of(() -> attempt(() -> service.join(id(), actor())), () -> attempt(() -> lifecycle.cancelRecruitment(id(), author.getId()))));
+        assertThat(outcomes).contains("OK").allMatch(v -> v.equals("OK") || v.equals("POST_CANCELLED"));
         assertThat(posts.findById(id()).orElseThrow().getStatus()).isEqualTo(PostStatus.CANCELLED);
         assertThat(active(id())).isZero();
     }
     @Test void ADMIN003_joinRacingRemovalLeavesNoJoinedMembers() throws Exception {
-        compete(List.of(() -> attempt(() -> service.join(id(), actor())), () -> attempt(() -> lifecycle.remove(id(), admin.getId()))));
+        List<String> outcomes = compete(List.of(() -> attempt(() -> service.join(id(), actor())), () -> attempt(() -> lifecycle.remove(id(), admin.getId()))));
+        assertThat(outcomes).contains("OK").allMatch(v -> v.equals("OK") || v.equals("POST_NOT_FOUND"));
         assertThat(posts.findById(id()).orElseThrow().getStatus()).isEqualTo(PostStatus.REMOVED);
         assertThat(active(id())).isZero();
     }
@@ -274,6 +278,217 @@ public abstract class ParticipationContract {
     }
     @Test void AUTH004_missingDatabaseUserCannotAct() { rejects(AUTHENTICATION_REQUIRED, () -> service.join(id(), Long.MAX_VALUE)); }
     @Test void missingPostIsNotFound() { rejects(POST_NOT_FOUND, () -> service.join(Long.MAX_VALUE, actor())); }
+
+    @Test void TXN_waitingJoinSeesCommittedFullStateAtLastSeat() throws Exception {
+        Post small = twoSeats();
+        assertThat(ordered(small.getId(), () -> service.join(small.getId(), actor()),
+            () -> service.join(small.getId(), other.getId()), () -> {}, false)).isEqualTo("POST_FULL");
+        assertThat(active(small.getId())).isEqualTo(1);
+        assertThat(posts.findById(small.getId()).orElseThrow().getStatus()).isEqualTo(PostStatus.FULL);
+        assertThat(participations.findByPost_IdAndUser_Id(small.getId(), other.getId())).isEmpty();
+    }
+    @Test void TXN_waitingJoinRecountsMembersWhenStatusRemainsOpen() throws Exception {
+        Post threeSeats = posts.save(Post.taxi(author, 3, REFERENCE.plusSeconds(60), NOW));
+        assertThat(ordered(threeSeats.getId(), () -> service.join(threeSeats.getId(), actor()),
+            () -> service.join(threeSeats.getId(), other.getId()), () -> {}, false)).isEqualTo("OK");
+        assertThat(active(threeSeats.getId())).isEqualTo(2);
+        assertThat(posts.findById(threeSeats.getId()).orElseThrow().getStatus()).isEqualTo(PostStatus.FULL);
+    }
+    @ParameterizedTest @ValueSource(booleans = {true, false})
+    void TXN_joinAndRecruitmentCancelAreConsistentInBothOrders(boolean joinFirst) throws Exception {
+        service.join(id(), other.getId());
+        Runnable join = () -> service.join(id(), actor());
+        Runnable cancel = () -> lifecycle.cancelRecruitment(id(), author.getId());
+        assertThat(ordered(id(), joinFirst ? join : cancel, joinFirst ? cancel : join, () -> {}, false))
+            .isEqualTo(joinFirst ? "OK" : "POST_CANCELLED");
+        assertThat(posts.findById(id()).orElseThrow().getStatus()).isEqualTo(PostStatus.CANCELLED);
+        assertThat(active(id())).isZero();
+        assertThat(participations.findMembers(id(), ParticipationStatus.CANCELLED))
+            .hasSize(joinFirst ? 2 : 1).allSatisfy(p -> assertThat(p.getCancelledAt()).isEqualTo(NOW));
+        if (!joinFirst) assertThat(participations.findByPost_IdAndUser_Id(id(), actor())).isEmpty();
+    }
+    @ParameterizedTest @ValueSource(booleans = {true, false})
+    void TXN_joinAndAdminRemovalAreConsistentInBothOrders(boolean joinFirst) throws Exception {
+        service.join(id(), other.getId());
+        Runnable join = () -> service.join(id(), actor());
+        Runnable remove = () -> lifecycle.remove(id(), admin.getId());
+        assertThat(ordered(id(), joinFirst ? join : remove, joinFirst ? remove : join, () -> {}, false))
+            .isEqualTo(joinFirst ? "OK" : "POST_NOT_FOUND");
+        Post saved = posts.findById(id()).orElseThrow();
+        assertThat(saved.getStatus()).isEqualTo(PostStatus.REMOVED);
+        assertThat(saved.getDeletedAt()).isEqualTo(NOW);
+        assertThat(jdbc.queryForObject("select deleted_by from post where id = ?", Long.class, id())).isEqualTo(admin.getId());
+        assertThat(active(id())).isZero();
+        assertThat(participations.findMembers(id(), ParticipationStatus.CANCELLED)).hasSize(joinFirst ? 2 : 1);
+        if (!joinFirst) assertThat(participations.findByPost_IdAndUser_Id(id(), actor())).isEmpty();
+    }
+    @Test void TXN_waitingParticipantCancelPreservesCommittedClosedStatus() throws Exception {
+        Post small = twoSeats(); service.join(small.getId(), actor());
+        assertThat(ordered(small.getId(), () -> lifecycle.close(small.getId(), author.getId()),
+            () -> service.cancel(small.getId(), actor()), () -> {}, false)).isEqualTo("OK");
+        assertThat(posts.findById(small.getId()).orElseThrow().getStatus()).isEqualTo(PostStatus.CLOSED);
+        assertThat(active(small.getId())).isZero();
+        assertThat(participations.findByPost_IdAndUser_Id(small.getId(), actor()).orElseThrow().getCancelledAt()).isEqualTo(NOW);
+    }
+    @ParameterizedTest @ValueSource(strings = {"close", "cancelRecruitment"})
+    void TXN_lifecycleRechecksExpiryAfterWaiting(String action) throws Exception {
+        service.join(id(), actor());
+        Runnable mutation = action.equals("close") ? () -> lifecycle.close(id(), author.getId())
+            : () -> lifecycle.cancelRecruitment(id(), author.getId());
+        assertThat(ordered(id(), () -> {}, mutation, () -> clock.set(REFERENCE), false)).isEqualTo("POST_FINISHED");
+        assertThat(posts.findById(id()).orElseThrow().getStatus()).isEqualTo(PostStatus.OPEN);
+        assertThat(active(id())).isEqualTo(1);
+    }
+    @Test void TXN_participantCancelRechecksDeadlineAfterWaiting() throws Exception {
+        Post small = twoSeats(); service.join(small.getId(), actor());
+        assertThat(ordered(small.getId(), () -> {}, () -> service.cancel(small.getId(), actor()),
+            () -> clock.set(small.getReferenceTime().minusSeconds(600)), false)).isEqualTo("CANCEL_TIME_CLOSED");
+        assertThat(posts.findById(small.getId()).orElseThrow().getStatus()).isEqualTo(PostStatus.FULL);
+        assertThat(active(small.getId())).isEqualTo(1);
+        assertThat(participations.findByPost_IdAndUser_Id(small.getId(), actor()).orElseThrow().getCancelledAt()).isNull();
+    }
+    @Test void TXN_adminRemovalRechecksExpiryAndPreservesFinishedHistoryAfterWaiting() throws Exception {
+        service.join(id(), actor());
+        assertThat(ordered(id(), () -> {}, () -> lifecycle.remove(id(), admin.getId()),
+            () -> clock.set(REFERENCE), false)).isEqualTo("OK");
+        assertThat(posts.findById(id()).orElseThrow().getStatus()).isEqualTo(PostStatus.REMOVED);
+        assertThat(active(id())).isEqualTo(1);
+    }
+    @ParameterizedTest @ValueSource(strings = {"cancelRecruitment", "remove"})
+    void TXN_preloadedPostIsRevalidatedAfterLockInAnExistingTransaction(String action) throws Exception {
+        Runnable terminal = action.equals("remove") ? () -> lifecycle.remove(id(), admin.getId())
+            : () -> lifecycle.cancelRecruitment(id(), author.getId());
+        assertThat(ordered(id(), terminal, () -> service.join(id(), actor()), () -> {}, true))
+            .isEqualTo(action.equals("remove") ? "POST_NOT_FOUND" : "POST_CANCELLED");
+        assertThat(active(id())).isZero();
+        assertThat(participations.findByPost_IdAndUser_Id(id(), actor())).isEmpty();
+    }
+    @ParameterizedTest @ValueSource(booleans = {true, false})
+    void TXN_preloadedParticipationIsRevalidatedAfterLock(boolean rejoinAfterCancel) throws Exception {
+        service.join(id(), actor());
+        long participationId = participations.findByPost_IdAndUser_Id(id(), actor()).orElseThrow().getId();
+        if (!rejoinAfterCancel) service.cancel(id(), actor());
+        Runnable join = () -> service.join(id(), actor());
+        Runnable cancel = () -> service.cancel(id(), actor());
+        assertThat(ordered(id(), rejoinAfterCancel ? cancel : join, rejoinAfterCancel ? join : cancel, () -> {}, true)).isEqualTo("OK");
+        Participation saved = participations.findByPost_IdAndUser_Id(id(), actor()).orElseThrow();
+        assertThat(saved.getId()).isEqualTo(participationId);
+        assertThat(saved.getStatus()).isEqualTo(rejoinAfterCancel ? ParticipationStatus.JOINED : ParticipationStatus.CANCELLED);
+        assertThat(active(id())).isEqualTo(rejoinAfterCancel ? 1 : 0);
+    }
+    @ParameterizedTest @ValueSource(strings = {"join", "cancel", "cancelRecruitment", "remove"})
+    void TXN_databaseFailureAfterBothTablesWereFlushedRollsBackBoth(String action) {
+        Post small = twoSeats();
+        boolean joining = action.equals("join");
+        if (!joining) service.join(small.getId(), actor());
+        PostStatus originalStatus = joining ? PostStatus.OPEN : PostStatus.FULL;
+        assertThatThrownBy(() -> readCommittedTransaction().executeWithoutResult(tx -> {
+            switch (action) {
+                case "join" -> service.join(small.getId(), actor());
+                case "cancel" -> service.cancel(small.getId(), actor());
+                case "cancelRecruitment" -> lifecycle.cancelRecruitment(small.getId(), author.getId());
+                case "remove" -> lifecycle.remove(small.getId(), admin.getId());
+                default -> throw new AssertionError(action);
+            }
+            posts.flush();
+            String expected = switch (action) { case "join" -> "FULL"; case "cancel" -> "OPEN";
+                case "cancelRecruitment" -> "CANCELLED"; default -> "REMOVED"; };
+            assertThat(jdbc.queryForObject("select status from post where id = ?", String.class, small.getId())).isEqualTo(expected);
+            assertThat(jdbc.queryForObject("select status from participation where post_id = ? and user_id = ?",
+                String.class, small.getId(), actor())).isEqualTo(joining ? "JOINED" : "CANCELLED");
+            // Fail a real DB constraint only AFTER SQL changes to both tables are visible in this transaction.
+            jdbc.update("update post set capacity = 0 where id = ?", small.getId());
+        })).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        Post saved = posts.findById(small.getId()).orElseThrow();
+        assertThat(saved.getStatus()).isEqualTo(originalStatus);
+        assertThat(saved.getDeletedAt()).isNull();
+        assertThat(jdbc.queryForObject("select deleted_by from post where id = ?", Long.class, small.getId())).isNull();
+        if (joining) assertThat(participations.findByPost_IdAndUser_Id(small.getId(), actor())).isEmpty();
+        else {
+            Participation restored = participations.findByPost_IdAndUser_Id(small.getId(), actor()).orElseThrow();
+            assertThat(restored.getStatus()).isEqualTo(ParticipationStatus.JOINED);
+            assertThat(restored.getCancelledAt()).isNull();
+            assertThat(restored.getUpdatedAt()).isEqualTo(NOW);
+        }
+    }
+    @Test void TXN_databaseUniqueConstraintRejectsDuplicateParticipationOutsideService() {
+        service.join(id(), actor());
+        assertThatThrownBy(() -> participations.saveAndFlush(new Participation(post, student, NOW)))
+            .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        assertThat(active(id())).isEqualTo(1);
+    }
+    @Test void TXN_failedRejoinRestoresCancelledRecordAndOpenPost() {
+        Post small = twoSeats(); service.join(small.getId(), actor()); service.cancel(small.getId(), actor());
+        Participation original = participations.findByPost_IdAndUser_Id(small.getId(), actor()).orElseThrow();
+        assertThatThrownBy(() -> readCommittedTransaction().executeWithoutResult(tx -> {
+            service.join(small.getId(), actor()); posts.flush();
+            assertThat(jdbc.queryForObject("select status from post where id = ?", String.class, small.getId())).isEqualTo("FULL");
+            assertThat(jdbc.queryForObject("select status from participation where id = ?", String.class, original.getId())).isEqualTo("JOINED");
+            jdbc.update("update post set capacity = 0 where id = ?", small.getId());
+        })).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        Participation restored = participations.findByPost_IdAndUser_Id(small.getId(), actor()).orElseThrow();
+        assertThat(restored.getId()).isEqualTo(original.getId());
+        assertThat(restored.getStatus()).isEqualTo(ParticipationStatus.CANCELLED);
+        assertThat(restored.getCancelledAt()).isEqualTo(original.getCancelledAt());
+        assertThat(restored.getUpdatedAt()).isEqualTo(original.getUpdatedAt());
+        assertThat(posts.findById(small.getId()).orElseThrow().getStatus()).isEqualTo(PostStatus.OPEN);
+        assertThat(active(small.getId())).isZero();
+    }
+    @Test void TXN_databaseForeignKeyAndStateCheckRejectInvalidDirectWrites() {
+        service.join(id(), actor());
+        assertThatThrownBy(() -> jdbc.update("update participation set post_id = ? where post_id = ? and user_id = ?", Long.MAX_VALUE, id(), actor()))
+            .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbc.update("update participation set status = 'CANCELLED', cancelled_at = null where post_id = ? and user_id = ?", id(), actor()))
+            .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        assertThat(active(id())).isEqualTo(1);
+    }
+    @ParameterizedTest @ValueSource(booleans = {true, false})
+    void TXN_incompatibleOuterTransactionIsRejectedBeforeMutation(boolean readOnly) {
+        TransactionTemplate transaction = readCommittedTransaction();
+        if (readOnly) transaction.setReadOnly(true);
+        else transaction.setIsolationLevel(org.springframework.transaction.TransactionDefinition.ISOLATION_REPEATABLE_READ);
+        assertThatThrownBy(() -> transaction.executeWithoutResult(tx -> service.join(id(), actor())))
+            .isInstanceOf(org.springframework.transaction.IllegalTransactionStateException.class);
+        assertThat(active(id())).isZero();
+        assertThat(posts.findById(id()).orElseThrow().getStatus()).isEqualTo(PostStatus.OPEN);
+    }
+
+    private TransactionTemplate readCommittedTransaction() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setIsolationLevel(org.springframework.transaction.TransactionDefinition.ISOLATION_READ_COMMITTED);
+        return transaction;
+    }
+    private String ordered(long postId, Runnable firstAction, Runnable waitingAction, Runnable beforeRelease, boolean preloadPost) throws Exception {
+        CountDownLatch prepared = new CountDownLatch(1), held = new CountDownLatch(1), started = new CountDownLatch(1), release = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<String> waiting = executor.submit(() -> attempt(() -> readCommittedTransaction().executeWithoutResult(tx -> {
+                if (preloadPost) {
+                    posts.findById(postId).orElseThrow();
+                    participations.findByPost_IdAndUser_Id(postId, actor());
+                }
+                prepared.countDown(); awaitSignal(held); started.countDown(); waitingAction.run();
+            })));
+            assertThat(prepared.await(10, TimeUnit.SECONDS)).isTrue();
+            Future<?> first = executor.submit(() -> readCommittedTransaction().executeWithoutResult(tx -> {
+                posts.findByIdForUpdate(postId).orElseThrow(); firstAction.run(); posts.flush();
+                held.countDown(); awaitSignal(release);
+            }));
+            assertThat(held.await(10, TimeUnit.SECONDS)).isTrue();
+            assertThat(started.await(10, TimeUnit.SECONDS)).isTrue();
+            verifyBlockedOnPost(waiting);
+            beforeRelease.run(); release.countDown();
+            first.get(10, TimeUnit.SECONDS);
+            return waiting.get(10, TimeUnit.SECONDS);
+        } finally { held.countDown(); release.countDown(); executor.shutdownNow(); executor.awaitTermination(10, TimeUnit.SECONDS); }
+    }
+    private void verifyBlockedOnPost(Future<?> waiting) throws Exception {
+        DatabaseLockAssertions.awaitPrimaryRowWait(jdbc, "post", waiting);
+    }
+    private static void awaitSignal(CountDownLatch signal) {
+        try { if (!signal.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("Timed out waiting for test transaction coordination"); }
+        catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new IllegalStateException(e); }
+    }
 
     @Test void HTTP_initialJoinIs201WithLocationAndNoSensitiveFields() throws Exception {
         mvc.perform(post("/api/posts/{id}/participants", id()).with(as(student)).with(csrf()))

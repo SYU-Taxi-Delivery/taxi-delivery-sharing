@@ -131,10 +131,14 @@ status 생략 시 기능정의서 DISC-001의 기본 활성 목록으로 **실�
 
 작성과 수정은 READ COMMITTED 쓰기 트랜잭션이다. 작성자 USERS 행을 먼저 잠그므로 첫 모집의 동시 생성도 직렬화된다. 수정은 작성자 → POST 순서로 잠근다. 참여/취소는 기존 POST 잠금을 유지하고 작성자 행을 잠그지 않는다. 필요한 잠금을 획득한 다음 서버 시각·상태·참가 조건·중복을 검사하고 저장한다. 실패 시 전체 롤백한다.
 
+POST 잠금 후에는 JPA 1차 캐시의 이전 값까지 refresh하여 최신 DB 상태로 검증한다. 상위 트랜잭션을 사용하는 경우에도 실제 READ_COMMITTED 쓰기 조건을 확인하며, 다른 격리 수준/읽기 전용의 상위 트랜잭션으로 쓰기를 진행하지 않는다. [2026-10-15 재검증 및 통합 계약](revalidation/concurrency-transaction-2026-10-15.md)을 참고한다.
+
 상세/목록은 REPEATABLE READ 읽기 트랜잭션의 일관된 snapshot에서 상태와 인원을 계산한다. 한 응답의 FINISHED/joinable 판정은 같은 evaluatedAt을 사용한다.
 
 새 저장소의 기존 `User` 엔티티와 `UserRepository`를 사용한다. **V1__team_user_schema.sql**은 새 DB용 팀 사용자 스키마, **V2__post_participation.sql**은 모집글/참여 스키마다. 기존 사용자 DB는 스키마를 검토하고 V1으로 명시적으로 baseline한 뒤 V2를 적용한다. 자동 baseline이나 자동 테이블 변경은 사용하지 않는다. 이전 저장소의 V1/V2 이력을 이 저장소로 그대로 가져오지 않는다. 자세한 절차는 [실행 안내](running.md)를 참고한다.
 
 DB만으로 시간에 따른 유효 상태 UNIQUE를 표현하지 않으므로 동일 작성자에 대한 생성/시간 변경 경로는 모두 위 작성자 잠금을 따라야 한다. 외부 코드가 POST를 직접 저장하면 이 보장을 우회한다. PARTICIPATION의 UNIQUE(post_id,user_id)는 그대로 유지한다.
+
+생성과 기준시각 변경은 유형과 관계없이 같은 중복 검사 쿼리를 사용한다. 저장 상태 OPEN/FULL/CLOSED여도 기준시각이 현재 이하이면 실질 FINISHED로 제외한다. [유형별·경계별·작성자 락 경합 재검증](revalidation/duplicate-recruitment-2026-10-15.md)을 참고한다.
 
 호출 예제: `requests/post.http`. 실행 검증: `scripts/smoke-post-demo.ps1`. 테스트: `PostContract`, H2/PostIntegrationTest, 전용 InnoDB/PostExternalDatabaseTest, MySQL 8.4/PostMySqlIT.

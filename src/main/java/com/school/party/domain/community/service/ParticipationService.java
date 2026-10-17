@@ -36,7 +36,7 @@ public class ParticipationService {
         requireOpen(post, now);
         if (!now.isBefore(post.deadline())) throw timeError(JOIN_TIME_CLOSED, post, now);
         if (post.getAuthor().getId() == actorId) throw new ApiException(SELF_PARTICIPATION_NOT_ALLOWED, now);
-        Participation existing = participations.findByPost_IdAndUser_Id(postId, actorId).orElse(null);
+        Participation existing = participations.findCurrentForMutation(postId, actorId).orElse(null);
         if (existing != null && existing.getStatus() == ParticipationStatus.JOINED) throw new ApiException(ALREADY_JOINED, now);
         long count = currentCount(postId);
         if (count >= post.getCapacity()) throw new ApiException(POST_FULL, now);
@@ -60,7 +60,7 @@ public class ParticipationService {
         requireActive(post, now);
         if (!now.isBefore(post.deadline())) throw timeError(CANCEL_TIME_CLOSED, post, now);
         if (post.getAuthor().getId() == actorId) throw new ApiException(AUTHOR_CANNOT_CANCEL_PARTICIPATION, now);
-        Participation p = participations.findByPost_IdAndUser_Id(postId, actorId).orElseThrow(() -> new ApiException(PARTICIPATION_NOT_FOUND, now));
+        Participation p = participations.findCurrentForMutation(postId, actorId).orElseThrow(() -> new ApiException(PARTICIPATION_NOT_FOUND, now));
         if (p.getStatus() != ParticipationStatus.JOINED) throw new ApiException(ALREADY_CANCELLED, now);
         long count = currentCount(postId);
         p.cancel(now);

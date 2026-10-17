@@ -4,7 +4,7 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import java.util.*;
-public interface ParticipationRepository extends JpaRepository<Participation, Long> {
+public interface ParticipationRepository extends JpaRepository<Participation, Long>, CurrentParticipationRepository {
     Optional<Participation> findByPost_IdAndUser_Id(long postId, long userId);
     long countByPost_IdAndStatus(long postId, ParticipationStatus status);
     @Query("select p from Participation p join fetch p.user where p.post.id = :postId and p.status = :status order by p.createdAt, p.id")

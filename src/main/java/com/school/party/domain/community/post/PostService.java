@@ -15,9 +15,12 @@ import java.util.*;
 import static com.school.party.domain.community.api.ApiModels.*;
 import static com.school.party.domain.community.api.ErrorCode.*;
 import static com.school.party.domain.community.post.PostResponse.*;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 @Service
 public class PostService {
+    @PersistenceContext private EntityManager entityManager;
     private final PostRepository posts;
     private final UserRepository users;
     private final ParticipationRepository participations;
@@ -29,6 +32,7 @@ public class PostService {
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Result<Detail> create(long actorId, CreatePostRequest request) {
+        MutationTransactions.requireWritableReadCommitted(entityManager);
         User author = lockedActor(actorId); // Serializes even the very first post for this author.
         Instant now = clock.instant();
         PostContent values = validator.create(request, now);
