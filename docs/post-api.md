@@ -10,6 +10,8 @@
 
 성공 형식은 `{ "data": ..., "meta": { "evaluatedAt": "...+09:00", "requestId": "..." } }`, 오류 형식은 `{ "error": { "code": "...", "message": "...", "details": ... }, "meta": ... }`다. ID는 JSON 문자열이고 시간은 offset이 있는 ISO 8601이다. API 응답은 Asia/Seoul, DB는 UTC다. `referenceTime`은 초와 소수초가 0인 분 단위 값만 허용한다.
 
+오류 응답은 `Content-Type: application/json`으로 반환한다. 응답 형식은 application/json이며, 인증·CSRF 검증을 통과한 요청의 Accept가 이를 허용하지 않으면 컨트롤러 실행 전에 406 NOT_ACCEPTABLE JSON을 반환한다. 이때 생성·수정은 DB에 반영되지 않는다. 입력/비즈니스 오류도 공통 error/meta 형식을 유지한다. 일반 `DELETE /api/posts/{postId}`는 제공하지 않아 405와 Allow를 반환한다. 관리자 soft delete는 현재 서비스 훅이며 관리자 삭제 HTTP API는 별도 구현 대상이다. [2026-10-28 재검증](revalidation/post-participation-2026-10-28.md)을 참고한다.
+
 ## 1. 작성 — POST /api/posts
 
 정상 응답: **201 Created**, `Location: /api/posts/{postId}`, data는 상세 응답이다.
