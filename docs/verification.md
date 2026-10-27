@@ -63,3 +63,13 @@ JPA가 만든 refresh_token.revoked의 BIT(1)와 V1 BOOLEAN(TINYINT(1)) 차이�
 학교 이메일 인증, 자체 로그인, 비밀번호 재설정, 권한, 동시 요청을 다루는 인증 계약 테스트 25건을 추가했다. 같은 테스트를 H2(`AuthIntegrationTest`)와 MySQL 8.4 Testcontainers(`AuthMySqlIT`, Flyway V1→V2 후 Hibernate validate)에서 실행해 모두 통과했다. 기본 `./gradlew test`는 192건 실행, 실패 0건이다. `UserDatabaseMigrationTest` 7건도 별도 MySQL 8.4.13 컨테이너에서 처음 실행해 통과했다.
 
 MySQL 8.4 회귀 실행에서 `PostMySqlIT` 72건은 통과했고, `ParticipationMySqlIT`는 72건 중 6건이 실패했다. 같은 6건이 수정 전 `main`에서도 실패하며, MySQL CHECK 제약 위반이 `UncategorizedSQLException`으로 분류되는 기존 문제다. [결과·근거·남은 확인 사항](revalidation/auth-week5-2026-11-09.md)을 참고한다.
+
+## 2026-10-28 주간 모집글·참여 API 재검증
+
+최신 origin/main `b79ca2a`에서 새 브랜치 `codex/revalidate-post-participation-20261028`로 시작했다. 모집글·참여 코드는 기존 제출 `c8bc537`과 동일했다. 이전 PR의 로컬/미제출 표시는 과거 실행 당시의 기록이며, 이번 작업은 닫힌 PR을 갱신하지 않는 별도 제출이다.
+
+추가 검증에서 지원하지 않는 Accept로 오류 JSON이 누락되고, 변경 요청은 406 응답에도 커밋되는 문제를 실제 HTTP와 DB에서 재현했다. 두 컨트롤러에 JSON 응답 형식 조건을 선언해 실행 전 거절하고, 공통 오류 처리기는 JSON Content-Type을 명시했다. 시간 정책·인증 인계·기존 DB 마이그레이션은 변경하지 않았다.
+
+25건의 회귀 사례를 추가했다. 전체 H2/HTTP 192건과 실행 JAR 빌드가 통과했다. 기본 실행에서 외부 DB/마이그레이션 조건부 테스트 134건은 건너뛰었으며, 이를 통과 건수에 포함하지 않았다. 이어 전용 MariaDB 11.4.10/InnoDB에서 모집글 83 + 참여 85 = 168건을 실행해 실패·오류·skip 0건을 확인했다. 실제 행 잠금 대기 관찰, 경합 처리 순서, 양쪽 테이블 롤백을 포함한다. [주간 재검증 보고서](revalidation/post-participation-2026-10-28.md)에 항목별 근거를 기록했다.
+
+일반 모집글 물리 DELETE는 기능정의서 POST-007에 따라 미제공이며 405/데이터 보존을 확인했다. 관리자 soft delete, 수동 마감, 모집 취소는 서비스 수준 검증만 완료했고 연결 HTTP API는 현재 미구현이다. 실제 팀 DB, MySQL 8.4 및 배포/프론트 연동 완료로 표시하지 않는다. main 병합·자동 머지·배포는 수행하지 않는다.

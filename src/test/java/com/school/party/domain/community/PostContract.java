@@ -426,6 +426,77 @@ public abstract class PostContract {
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.items[0].communicationUrl").doesNotExist())
             .andExpect(jsonPath("$.data.items[0].authorId").doesNotExist()).andExpect(jsonPath("$.data.totalElements").value(1));
     }
+
+    @ParameterizedTest @ValueSource(strings = {"author", "student", "admin"})
+    void REV_HTTP_physicalPostDeleteIsNotExposedAndDoesNotChangeData(String actor) throws Exception {
+        long id = create(); participation.join(id, student.getId());
+        User requester = switch (actor) { case "author" -> author; case "admin" -> admin; default -> student; };
+        mvc.perform(delete("/api/posts/{id}", id).with(as(requester)).with(csrf()))
+            .andExpect(status().isMethodNotAllowed()).andExpect(header().exists("Allow"))
+            .andExpect(jsonPath("$.error.code").value("METHOD_NOT_ALLOWED"))
+            .andExpect(jsonPath("$.data").doesNotExist());
+        Post saved = posts.findById(id).orElseThrow();
+        assertThat(saved.getStatus()).isEqualTo(PostStatus.OPEN);
+        assertThat(saved.getDeletedAt()).isNull();
+        assertThat(posts.count()).isEqualTo(1);
+        assertThat(participations.countByPost_IdAndStatus(id, ParticipationStatus.JOINED)).isEqualTo(1);
+    }
+
+    @ParameterizedTest @ValueSource(strings = {"contentType", "accept", "malformedJson", "businessWithAccept", "malformedWithAccept"})
+    void REV_HTTP_protocolErrorsUseTheDocumentedJsonEnvelope(String scenario) throws Exception {
+        var request = switch (scenario) {
+            case "contentType" -> post("/api/posts").contentType(MediaType.TEXT_PLAIN).content("{}");
+            case "accept" -> get("/api/posts").accept(MediaType.TEXT_PLAIN);
+            case "businessWithAccept" -> get("/api/posts/0").accept(MediaType.TEXT_PLAIN);
+            case "malformedWithAccept" -> post("/api/posts").accept(MediaType.TEXT_PLAIN)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"type\":");
+            default -> post("/api/posts").contentType(MediaType.APPLICATION_JSON).content("{\"type\":");
+        };
+        boolean unsupportedAccept = scenario.equals("accept") || scenario.endsWith("WithAccept");
+        int expectedStatus = scenario.equals("contentType") ? 415 : unsupportedAccept ? 406 : 400;
+        String expectedCode = scenario.equals("contentType") ? "UNSUPPORTED_MEDIA_TYPE"
+            : unsupportedAccept ? "NOT_ACCEPTABLE" : "INVALID_REQUEST";
+        var result = mvc.perform(request.with(as(author)).with(csrf()))
+            .andExpect(status().is(expectedStatus)).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.error.code").value(expectedCode))
+            .andExpect(jsonPath("$.error.message").isNotEmpty()).andExpect(jsonPath("$.data").doesNotExist())
+            .andExpect(header().string("Cache-Control", "no-store")).andReturn();
+        var json = mapper.readTree(result.getResponse().getContentAsString());
+        assertThat(json.path("meta").path("requestId").asText()).isEqualTo(result.getResponse().getHeader("X-Request-Id"));
+        assertThat(posts.count()).isZero();
+    }
+
+    @Test void REV_HTTP_successAndBusinessErrorMetadataMatchTheirResponseHeaders() throws Exception {
+        var created = mvc.perform(post("/api/posts").with(as(author)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+            .content(mapper.writeValueAsString(taxi(TIME)))).andExpect(status().isCreated())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+            .andExpect(header().string("Cache-Control", "no-store"))
+            .andExpect(jsonPath("$.data.postId").isString()).andExpect(jsonPath("$.data.capacity").isNumber())
+            .andExpect(jsonPath("$.data.joinable").isBoolean()).andExpect(jsonPath("$.error").doesNotExist()).andReturn();
+        var success = mapper.readTree(created.getResponse().getContentAsString());
+        assertThat(success.path("meta").path("requestId").asText()).isEqualTo(created.getResponse().getHeader("X-Request-Id"));
+        long id = Long.parseLong(success.path("data").path("postId").asText());
+        var denied = mvc.perform(patch("/api/posts/{id}", id).with(as(student)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"title\":\"허용되면 안 되는 수정\"}")).andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error.code").value("FORBIDDEN_OPERATION"))
+            .andExpect(jsonPath("$.data").doesNotExist()).andReturn();
+        var failure = mapper.readTree(denied.getResponse().getContentAsString());
+        assertThat(failure.path("meta").path("requestId").asText()).isEqualTo(denied.getResponse().getHeader("X-Request-Id"));
+        assertThat(failure.path("meta").path("requestId").asText()).isNotEqualTo(success.path("meta").path("requestId").asText());
+        assertThat(posts.findById(id).orElseThrow().getTitle()).isEqualTo("택시 동승");
+    }
+
+    @ParameterizedTest @ValueSource(strings = {"create", "update"})
+    void REV_HTTP_unsupportedAcceptMustNotCommitPostMutation(String action) throws Exception {
+        long id = action.equals("update") ? create() : 0;
+        var request = action.equals("create")
+            ? post("/api/posts").content(mapper.writeValueAsString(taxi(TIME)))
+            : patch("/api/posts/{id}", id).content("{\"title\":\"실패 응답이면 저장되면 안 됨\"}");
+        mvc.perform(request.with(as(author)).with(csrf()).contentType(MediaType.APPLICATION_JSON).accept(MediaType.TEXT_PLAIN))
+            .andExpect(status().isNotAcceptable()).andExpect(jsonPath("$.error.code").value("NOT_ACCEPTABLE"));
+        assertThat(posts.count()).isEqualTo(id == 0 ? 0 : 1);
+        if (id != 0) assertThat(posts.findById(id).orElseThrow().getTitle()).isEqualTo("택시 동승");
+    }
     @Test void httpStrictInputRejectsForgedFieldsWrongTypesUnknownEnumsAndDuplicateKeys() throws Exception {
         String valid = mapper.writeValueAsString(taxi(TIME));
         for (String bad : List.of(valid.replace("\"capacity\":4", "\"capacity\":\"4\""),
