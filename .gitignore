@@ -35,3 +35,12 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# Local verification caches, credentials, and generated artifacts
+/work/
+/output/
+/tools/
+.env
+.env.*
+!.env.example
+*.log

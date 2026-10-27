@@ -5,3 +5,15 @@
 본 과제는 학생들이 택시·배달 합승 인원을 모집하고, 정원과 시간에 따른 참여 규칙을 시스템이 자동으로 관리하는 교내 웹 서비스를 Spring Boot 기반으로 개발하는 것을 목표로 한다.
 학생은 모집글을 작성하거나 모집 중인 글에 참여를 신청할 수 있으며, 정원 초과, 출발 시간 경과, 본인 모집글 참여, 중복 참여 등의 조건은 서버에서 자동으로 검증하여 차단한다.
 이를 통해 합승 모집 및 참여 과정에서 발생하는 혼선을 줄이고, 학생들의 교통비와 배달비 부담을 낮추는 것을 목표로 한다.
+
+## API 구현 및 실행
+
+모집글 작성·수정·상세·목록 API와 Participation API를 기존 학교 사용자 모델에 통합했다.
+
+- [실행·Gradle 테스트·학교 계정 로그인·DB 적용](docs/running.md)
+- [모집글 API 명세](docs/post-api.md)
+- [Participation API 명세](docs/participation-api.md)
+- [모집글 비즈니스 규칙](docs/post-business-rules.md)
+- [검증 결과](docs/verification.md)
+
+Java 17 이상에서 `./gradlew test bootJar` (Windows: `gradlew.bat test bootJar`)로 검증 및 빌드한다.

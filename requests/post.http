@@ -1,0 +1,65 @@
+@baseUrl = http://127.0.0.1:8080
+
+# demo 프로필용 Basic 호출 예제. 실제 학교 계정은 session.http를 사용한다.
+
+### 먼저 실행: CSRF + 매번 미래 시각 생성. 쿠키는 IntelliJ HTTP Client가 유지.
+GET {{baseUrl}}/api/csrf
+Authorization: Basic author demo-pass
+
+> {%
+  client.global.set("postCsrf", response.body.data.token);
+  var t = new Date(Date.now() + 4 * 60 * 60 * 1000);
+  t.setUTCSeconds(0, 0);
+  client.global.set("referenceTime", t.toISOString());
+%}
+
+### 작성 201: 같은 작성자로 같은 시각에 다시 실행하면 409
+POST {{baseUrl}}/api/posts
+Authorization: Basic author demo-pass
+X-XSRF-TOKEN: {{postCsrf}}
+Content-Type: application/json
+
+{
+  "type": "TAXI",
+  "title": "학교까지 택시 동승",
+  "content": "석계역 앞에서 만나요.",
+  "capacity": 4,
+  "referenceTime": "{{referenceTime}}",
+  "departure": "석계역",
+  "destination": "삼육대학교",
+  "communicationUrl": "https://example.com/room"
+}
+
+> {% client.global.set("createdPostId", response.body.data.postId); %}
+
+### 작성자 상세: 소통 링크 제공
+GET {{baseUrl}}/api/posts/{{createdPostId}}
+Authorization: Basic author demo-pass
+
+### 비참가자 상세: 소통 링크 필드 생략
+GET {{baseUrl}}/api/posts/{{createdPostId}}
+Authorization: Basic student1 demo-pass
+
+### 제목 변경 및 선택 링크 삭제 200
+PATCH {{baseUrl}}/api/posts/{{createdPostId}}
+Authorization: Basic author demo-pass
+X-XSRF-TOKEN: {{postCsrf}}
+Content-Type: application/json
+
+{ "title": "수정된 모집 안내", "communicationUrl": null }
+
+### 목록
+GET {{baseUrl}}/api/posts?type=TAXI&page=0&size=20
+Authorization: Basic student1 demo-pass
+
+### 종료 영역
+GET {{baseUrl}}/api/posts?status=FINISHED&page=0&size=20
+Authorization: Basic author demo-pass
+
+### 타인 수정 403
+PATCH {{baseUrl}}/api/posts/{{createdPostId}}
+Authorization: Basic student1 demo-pass
+X-XSRF-TOKEN: {{postCsrf}}
+Content-Type: application/json
+
+{ "title": "권한 없는 수정" }

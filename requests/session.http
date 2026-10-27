@@ -1,0 +1,49 @@
+@baseUrl = http://127.0.0.1:8080
+
+### 학교 이메일 회원가입을 완료한 실제 계정으로 실행한다.
+### 인증 없이 CSRF 토큰 발급. HTTP Client가 쿠키를 유지한다.
+GET {{baseUrl}}/api/csrf
+
+> {% client.global.set("sessionCsrf", response.body.data.token); %}
+
+### 학교 가입 시 등록한 학번/이메일과 비밀번호를 사용한다.
+POST {{baseUrl}}/api/auth/local/login
+X-XSRF-TOKEN: {{sessionCsrf}}
+Content-Type: application/json
+
+{
+  "identifier": "등록한 학번",
+  "password": "등록한 비밀번호"
+}
+
+### 로그인 후 변경된 CSRF 토큰 발급. JSESSIONID 쿠키로 인증된다.
+GET {{baseUrl}}/api/csrf
+
+> {%
+  client.global.set("sessionCsrf", response.body.data.token);
+  var t = new Date(Date.now() + 4 * 60 * 60 * 1000);
+  t.setUTCSeconds(0, 0);
+  client.global.set("sessionReferenceTime", t.toISOString());
+%}
+
+### 모집글 작성
+POST {{baseUrl}}/api/posts
+X-XSRF-TOKEN: {{sessionCsrf}}
+Content-Type: application/json
+
+{
+  "type": "TAXI",
+  "title": "학교까지 함께 이동해요",
+  "content": "석계역에서 만나요",
+  "capacity": 4,
+  "referenceTime": "{{sessionReferenceTime}}",
+  "departure": "석계역",
+  "destination": "삼육대학교"
+}
+
+### 모집글 목록
+GET {{baseUrl}}/api/posts
+
+### 로그아웃
+POST {{baseUrl}}/logout
+X-XSRF-TOKEN: {{sessionCsrf}}
