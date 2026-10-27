@@ -20,7 +20,8 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ApiException.class)
     ResponseEntity<ApiModels.Failure> business(ApiException e, HttpServletRequest request) {
         log.info("participation_api_rejected requestId={} code={}", RequestMetadataFilter.requestId(request), e.code());
-        return ResponseEntity.status(e.code().status()).body(ApiResponses.failure(e.code(), e.evaluatedAt(), e.details(), request));
+        return ResponseEntity.status(e.code().status()).contentType(MediaType.APPLICATION_JSON)
+            .body(ApiResponses.failure(e.code(), e.evaluatedAt(), e.details(), request));
     }
     @ExceptionHandler({MethodArgumentTypeMismatchException.class, ConstraintViolationException.class})
     ResponseEntity<ApiModels.Failure> invalid(Exception e, HttpServletRequest request) { return error(ErrorCode.INVALID_QUERY_PARAMETER, request); }
@@ -37,6 +38,7 @@ public class ApiExceptionHandler {
         return error(ErrorCode.INTERNAL_SERVER_ERROR, request);
     }
     private ResponseEntity<ApiModels.Failure> error(ErrorCode code, HttpServletRequest req) {
-        return ResponseEntity.status(code.status()).body(ApiResponses.failure(code, clock.instant(), Map.of(), req));
+        return ResponseEntity.status(code.status()).contentType(MediaType.APPLICATION_JSON)
+            .body(ApiResponses.failure(code, clock.instant(), Map.of(), req));
     }
 }

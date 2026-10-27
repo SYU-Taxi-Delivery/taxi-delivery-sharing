@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.Clock;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -30,7 +31,8 @@ public class ProtocolExceptionHandler {
             case 415 -> ErrorCode.UNSUPPORTED_MEDIA_TYPE;
             default -> ErrorCode.API_NOT_FOUND;
         };
-        return ResponseEntity.status(code.status()).headers(response.getHeaders())
+        // Errors have a fixed JSON contract, including a request that cannot accept the success format.
+        return ResponseEntity.status(code.status()).headers(response.getHeaders()).contentType(MediaType.APPLICATION_JSON)
             .body(ApiResponses.failure(code, clock.instant(), Map.of(), request));
     }
 }
