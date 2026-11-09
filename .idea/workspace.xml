@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="bc04bddd-12b1-453c-9fdf-93346550512c" name="변경" comment="feat: 유저 엔티티, 학교 이메일 인증 및 Fallback 로그인 구현" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="main" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;sonny0291&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/SYU-Taxi-Delivery/taxi-delivery-sharing.git&quot;,
+    &quot;accountId&quot;: &quot;a84b8509-8bea-4d0a-afb7-e8cb9faac031&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 3,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3KYLzrY3p71ApffQ3sK8LCOYaxa" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Gradle.AuthAndUserTest.executor&quot;: &quot;Run&quot;,
+    &quot;Gradle.LocalAuthTest.executor&quot;: &quot;Run&quot;,
+    &quot;Gradle.taxi-delivery-sharing(수정본) 빌드.executor&quot;: &quot;Run&quot;,
+    &quot;Gradle.taxi-delivery-sharing(수정본).executor&quot;: &quot;Run&quot;,
+    &quot;JUnit.AuthAndUserTest.executor&quot;: &quot;Run&quot;,
+    &quot;JUnit.AuthIntegrationTest.executor&quot;: &quot;Run&quot;,
+    &quot;JUnit.LocalAuthTest.executor&quot;: &quot;Run&quot;,
+    &quot;JUnit.TaxiDeliverySharingApplicationTests.executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;Spring Boot.TaxiDeliverySharingApplication.executor&quot;: &quot;Run&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;feat/auth-verification&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/lee/Desktop/taxi-delivery-sharing&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.jshint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.jshint&quot;: &quot;&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;
+  }
+}</component>
+  <component name="RunManager" selected="JUnit.LocalAuthTest">
+    <configuration name="LocalAuthTest" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="taxi-delivery-sharing.test" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.syu.taxidelivery.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="com.syu.taxidelivery" />
+      <option name="MAIN_CLASS_NAME" value="com.syu.taxidelivery.LocalAuthTest" />
+      <option name="TEST_OBJECT" value="class" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="JetRunConfigurationType">
+      <module name="taxi-delivery-sharing(수정본)" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
+      <module name="taxi-delivery-sharing(수정본)" />
+      <option name="filePath" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TaxiDeliverySharingApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" temporary="true" nameIsGenerated="true">
+      <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UnknownPolicyInFreeMode" />
+      <module name="taxi-delivery-sharing.main" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.syu.taxidelivery.TaxiDeliverySharingApplication" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.syu.taxidelivery.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="JUnit.LocalAuthTest" />
+        <item itemvalue="Spring Boot.TaxiDeliverySharingApplication" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-a203e0a19954-intellij.indexing.shared.core-IU-262.10968.63" />
+        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-IU-262.10968.63" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="디폴트 작업">
+      <changelist id="bc04bddd-12b1-453c-9fdf-93346550512c" name="변경" comment="" />
+      <created>1791729819727</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1791729819727</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="feat: 유저 엔티티, 학교 이메일 인증 및 Fallback 로그인 구현" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat: 유저 엔티티, 학교 이메일 인증 및 Fallback 로그인 구현" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="NONE" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/com/syu/taxidelivery/domain/user/service/SchoolEmailAuthService.java</url>
+          <line>133</line>
+          <placement>INTER_LINE</placement>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-field">
+          <url>file://$PROJECT_DIR$/src/main/java/com/syu/taxidelivery/domain/user/dto/SchoolRegisterRequest.java</url>
+          <line>16</line>
+          <properties field="name" class="com.syu.taxidelivery.domain.user.dto.SchoolRegisterRequest" />
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>
