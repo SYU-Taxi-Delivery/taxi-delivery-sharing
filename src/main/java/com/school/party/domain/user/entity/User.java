@@ -58,4 +58,8 @@ public class User {
     public void updateLastLogin() {
         this.lastLoginAt = LocalDateTime.now();
     }
+
+    public void updateLastLogin(LocalDateTime loginAt) {
+        this.lastLoginAt = loginAt;
+    }
 }

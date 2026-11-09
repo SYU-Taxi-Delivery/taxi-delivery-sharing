@@ -18,7 +18,11 @@ import java.util.Map;
 public class SecurityConfiguration {
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
     @Bean SecurityFilterChain securityFilterChain(HttpSecurity http, Environment env, ObjectMapper mapper, Clock clock) throws Exception {
-        http.authorizeHttpRequests(a -> a.requestMatchers("/error", "/api/csrf", "/api/auth/local/login", "/api/auth/school-email/**").permitAll().anyRequest().authenticated());
+        http.authorizeHttpRequests(a -> a
+            .requestMatchers("/error", "/api/csrf", "/api/auth/local/login", "/api/auth/school-email/**", "/api/auth/password-reset/**").permitAll()
+            // Administrator-only APIs must live under /api/admin; students receive 403 FORBIDDEN_OPERATION.
+            .requestMatchers("/api/admin/**").hasRole("ADMIN")
+            .anyRequest().authenticated());
         // Keep CSRF protection for browser/session integration; clients fetch /api/csrf before mutations.
         http.csrf(c -> c.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()));
         http.exceptionHandling(e -> e

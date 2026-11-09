@@ -41,6 +41,10 @@ Docker가 있으면 `./gradlew.bat mysqlTest`로 MySQL 8.4 계약 테스트를 �
 5. 반환된 JSESSIONID 쿠키로 모집글·참여 API에 접근한다. 로그인 시 세션 ID와 CSRF 토큰이 갱신되므로 `GET /api/csrf`를 다시 호출한 뒤 쓰기 요청을 보낸다.
 6. 로그아웃은 CSRF 토큰을 포함한 `POST /logout`이다. 세션을 무효화하고 CSRF 쿠키를 삭제하며 현재 응답은 302 리다이렉트다. 다음 로그인 전 `GET /api/csrf`를 다시 호출한다.
 
+7. 비밀번호 재설정은 `POST /api/auth/password-reset/send-code` `{"schoolEmail":"..."}` → 메일의 6자리 코드로 `POST /api/auth/password-reset/confirm` `{"schoolEmail":"...","code":"123456","newPassword":"..."}`다. 둘 다 CSRF 토큰이 필요하다. 재설정이 끝나면 실패 횟수와 잠금이 풀린다.
+
+학교 이메일은 공백 제거·소문자 변환 후 `syuin.ac.kr` 또는 `syu.ac.kr`만 허용한다(`app.auth.school-email.allowed-domains`로 변경). 인증 코드는 5분 유효, 5회 오입력 시 폐기, 60초 안 재요청 불가이며 인증 완료 후 30분 안에 가입해야 한다. 비밀번호는 8~64자, 72바이트 이하다. 인증 API 오류는 모집글 API와 같은 `{"error":{"code":...},"meta":...}` 형식이다. `/api/admin/**`는 ADMIN 역할만 접근할 수 있다. 자세한 내용은 [5주차 인증 점검](revalidation/auth-week5-2026-11-09.md)을 참고한다.
+
 `GET /api/csrf` 응답의 `token`은 마스킹된 값이므로 쿠키 값을 그대로 헤더에 복사하는 대신 반환된 `headerName`과 `token`을 사용한다. 로그인 후 기존 세션 ID가 교체되고, 기존 세션이 없으면 새 세션을 발급한다. Basic 인증 필터와 demo 계정은 demo가 활성화된 경우에만 제공한다. 모집글·참여 API는 기존 세션 사용자도 매 요청 DB에서 ACTIVE 상태인지 확인하므로 SUSPENDED/WITHDRAWN 계정은 접근할 수 없다. [실제 HTTP 인증·CSRF 재검증](revalidation/authentication-csrf-2026-10-15.md)을 참고한다.
 
 로그인 실패 횟수가 예외로 롤백되던 부분을 보정하고 credential 행 잠금으로 동시 실패 횟수를 관리한다. 기존 5회 실패/30분 잠금 정책을 유지한다. ID를 지정하는 헤더나 요청 필드로 로그인할 수 없다. 별도 학교 SSO 공급자와 JWT/RefreshToken 발급은 이번 세션 연결 범위에 포함하지 않는다.

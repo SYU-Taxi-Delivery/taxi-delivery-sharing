@@ -10,27 +10,25 @@ import com.school.party.domain.user.entity.UserAuth;
 import com.school.party.domain.user.enums.AuthProvider;
 import com.school.party.domain.user.enums.Role;
 import com.school.party.domain.user.enums.UserStatus;
+import com.school.party.domain.user.exception.AuthErrorCode;
+import com.school.party.domain.user.exception.AuthException;
 import com.school.party.domain.user.repository.LocalCredentialRepository;
 import com.school.party.domain.user.repository.UserAuthRepository;
 import com.school.party.domain.user.repository.UserRepository;
+import com.school.party.domain.user.service.EmailVerificationStore.Purpose;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-
-import java.util.Map;
-
-import java.util.Random;
-
-import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class SchoolEmailAuthService {
 
     private final UserRepository userRepository;
@@ -38,89 +36,74 @@ public class SchoolEmailAuthService {
     private final LocalCredentialRepository localCredentialRepository;
     private final JavaMailSender mailSender;
     private final PasswordEncoder passwordEncoder;
-
-    // 허용할 학교 이메일 도메인 (필요에 따라 수정)
-    private static final String ALLOWED_EMAIL_DOMAIN = "@syu.ac.kr";
-
-    // 인메모리 인증코드 및 인증 완료 상태 관리 (운영 환경에서는 Redis 활용 권장)
-    private final Map<String, String> verificationCodes = new ConcurrentHashMap<>();
-    private final Map<String, Boolean> verifiedEmails = new ConcurrentHashMap<>();
+    private final SchoolEmailPolicy emailPolicy;
+    private final EmailVerificationStore verificationStore;
 
     /**
      * [1단계: 학교 이메일로 6자리 인증코드 발송]
-     * ERD 제약조건: school_email UNIQUE 및 학교 도메인 검증
+     * 학교 도메인(정확히 일치)만 허용, 이미 가입된 이메일 거절, 60초 내 재요청 거절.
+     * 메일 발송에 실패하면 코드를 폐기해 바로 다시 요청할 수 있다.
      */
     public void sendVerificationCode(SendMailCodeRequest request) {
-        String email = request.getSchoolEmail();
-
-        // 1. 학교 도메인 이메일 여부 검증
-        if (!email.endsWith(ALLOWED_EMAIL_DOMAIN)) {
-            throw new IllegalArgumentException("학교 공식 이메일(" + ALLOWED_EMAIL_DOMAIN + ")만 사용할 수 있습니다.");
+        String email = emailPolicy.normalize(request.getSchoolEmail());
+        if (userRepository.existsBySchoolEmail(email)) throw new AuthException(AuthErrorCode.EMAIL_ALREADY_REGISTERED);
+        String code = verificationStore.issue(Purpose.SIGN_UP, email);
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(email);
+            message.setSubject("[택시·배달 합승] 학교 학생 인증 번호 안내");
+            message.setText("안녕하세요. 학생 인증을 위한 6자리 인증 번호는 [" + code + "] 입니다. "
+                + EmailVerificationStore.CODE_TTL.toMinutes() + "분 안에 입력해 주세요.");
+            mailSender.send(message);
+        } catch (MailException e) {
+            verificationStore.discard(Purpose.SIGN_UP, email, code);
+            throw e;
         }
-
-        // 2. 이미 가입된 학교 이메일인지 중복 검증
-        if (userRepository.existsBySchoolEmail(email)) {
-            throw new IllegalArgumentException("이미 가입된 학교 이메일입니다.");
-        }
-
-        // 3. 6자리 난수 인증코드 생성
-        String code = String.format("%06d", new Random().nextInt(1000000));
-        verificationCodes.put(email, code);
-
-        // 4. 이메일 발송
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(email);
-        message.setSubject("[택시·배달 합승] 학교 학생 인증 번호 안내");
-        message.setText("안녕하세요. 학생 인증을 위한 6자리 인증 번호는 [" + code + "] 입니다.");
-        mailSender.send(message);
     }
 
     /**
      * [2단계: 사용자가 입력한 인증코드 검증]
+     * 5분 유효, 5회 틀리면 코드 폐기. 성공하면 30분 동안 가입할 수 있다.
      */
     public void verifyCode(VerifyMailCodeRequest request) {
-        String email = request.getSchoolEmail();
-        String inputCode = request.getCode();
-
-        String savedCode = verificationCodes.get(email);
-        if (savedCode == null || !savedCode.equals(inputCode)) {
-            throw new IllegalArgumentException("인증 번호가 일치하지 않거나 만료되었습니다.");
-        }
-
-        // 인증 성공 처리 및 임시 코드 제거
-        verificationCodes.remove(email);
-        verifiedEmails.put(email, true);
+        String email = emailPolicy.normalize(request.getSchoolEmail());
+        verificationStore.verify(Purpose.SIGN_UP, email, request.getCode());
+        verificationStore.markVerified(Purpose.SIGN_UP, email);
     }
 
     /**
-     * [3단계: 이메일 인증 성공 후 회원가입 및 ERD 테이블 자동 생성]
-     * USERS ➔ USER_AUTH ➔ LOCAL_CREDENTIAL 3개 테이블 연동 생성
+     * [3단계: 이메일 인증 성공 후 회원가입]
+     * USERS ➔ USER_AUTH ➔ LOCAL_CREDENTIAL을 하나의 트랜잭션으로 저장한다. 어느 단계든 실패하면
+     * 모두 롤백되고, 소비한 인증 상태를 되돌려 다시 시도할 수 있다. 같은 인증으로 동시에 요청하면
+     * 한 요청만 인증 상태를 가져간다.
      */
     @Transactional
     public User registerWithSchoolEmail(SchoolRegisterRequest request) {
-        String email = request.getSchoolEmail();
+        String email = emailPolicy.normalize(request.getSchoolEmail());
+        String studentNo = request.getStudentNo().trim();
+        PasswordPolicy.validate(request.getPassword());
 
-        // 1. 이메일 인증 수행 여부 검증
-        if (!Boolean.TRUE.equals(verifiedEmails.get(email))) {
-            throw new IllegalStateException("이메일 인증이 완료되지 않았습니다.");
-        }
+        Instant verifiedUntil = verificationStore.consumeVerified(Purpose.SIGN_UP, email)
+            .orElseThrow(() -> new AuthException(AuthErrorCode.EMAIL_NOT_VERIFIED));
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) verificationStore.restoreVerified(Purpose.SIGN_UP, email, verifiedUntil);
+            }
+        });
 
-        // 2. 학번 중복 검증 (ERD UNIQUE 제약조건)
-        if (userRepository.existsByStudentNo(request.getStudentNo())) {
-            throw new IllegalArgumentException("이미 등록된 학번입니다.");
-        }
+        if (userRepository.existsBySchoolEmail(email)) throw new AuthException(AuthErrorCode.EMAIL_ALREADY_REGISTERED);
+        if (userRepository.existsByStudentNo(studentNo)) throw new AuthException(AuthErrorCode.STUDENT_NO_ALREADY_REGISTERED);
 
-        // 3. USERS 마스터 엔티티 생성 및 저장
         User user = User.builder()
-                .studentNo(request.getStudentNo())
-                .name(request.getName())
+                .studentNo(studentNo)
+                .name(request.getName().trim())
                 .schoolEmail(email)
                 .role(Role.STUDENT)
                 .status(UserStatus.ACTIVE)
                 .build();
         userRepository.save(user);
 
-        // 4. USER_AUTH 테이블 생성 (provider: SCHOOL_SSO 계열 또는 LOCAL 관리)
+        // 기존 데이터와의 호환을 위해 provider 값은 기존 구현(SCHOOL_SSO)을 유지한다.
         UserAuth userAuth = UserAuth.builder()
                 .user(user)
                 .provider(AuthProvider.SCHOOL_SSO)
@@ -128,17 +111,14 @@ public class SchoolEmailAuthService {
                 .build();
         userAuthRepository.save(userAuth);
 
-        // 5. LOCAL_CREDENTIAL 테이블 생성 (BCrypt 패스워드 암호화)
         LocalCredential credential = LocalCredential.builder()
                 .user(user)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .failedLoginCount(0)
                 .build();
         localCredentialRepository.save(credential);
-
-        // 사용한 인증 정보 제거
-        verifiedEmails.remove(email);
-
+        // Surface unique-constraint violations from a concurrent sign-up here, inside the transaction.
+        userRepository.flush();
         return user;
     }
 }
