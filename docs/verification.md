@@ -1,5 +1,11 @@
 # 새 저장소 통합 검증 기록
 
+## 최신 검증: 2026-11-11 / Issue #20
+
+최신 main b79ca2a에서 fix/20-post-participation-validation 브랜치를 만들고, 미디어 협상 오류 수정 및 테스트를 포함해 재검증했다. 전체 기본/실제 HTTP/선택 프론트 어댑터 195건, 전용 MariaDB 168건이 실패·오류 0건으로 통과했다. 기본 실행의 조건부 skip 134건은 제외했고 Node/프론트 소스가 없는 일반 실행은 선택 1건을 추가로 건너뛰어 194건을 실행한다. test bootJar도 성공했다.
+
+프론트 f7bd91c의 실제 API 어댑터가 18개 시나리오/44회 실제 HTTP 요청을 통과했다. 브라우저/Next 프록시/배포 E2E는 미검증이며 가입 계약 불일치와 미구현 관리 API도 남아 있다. 기존 PR #16과 겹치는 수정은 별도로 명시한다. [상세 결과](revalidation/post-participation-2026-11-11.md), [프론트 연동 계약](frontend-api-integration.md)을 참고한다. 아래는 이전 날짜의 검증 기록이다.
+
 검증일: 2026-10-12. 대상: SYU-Taxi-Delivery/taxi-delivery-sharing, Spring Boot 4.1.1 / Gradle 9.7.1.
 
 | 검증 | 결과 |

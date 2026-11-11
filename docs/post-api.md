@@ -10,7 +10,7 @@
 
 성공 형식은 `{ "data": ..., "meta": { "evaluatedAt": "...+09:00", "requestId": "..." } }`, 오류 형식은 `{ "error": { "code": "...", "message": "...", "details": ... }, "meta": ... }`다. ID는 JSON 문자열이고 시간은 offset이 있는 ISO 8601이다. API 응답은 Asia/Seoul, DB는 UTC다. `referenceTime`은 초와 소수초가 0인 분 단위 값만 허용한다.
 
-오류 응답은 `Content-Type: application/json`으로 반환한다. 응답 형식은 application/json이며, 인증·CSRF 검증을 통과한 요청의 Accept가 이를 허용하지 않으면 컨트롤러 실행 전에 406 NOT_ACCEPTABLE JSON을 반환한다. 이때 생성·수정은 DB에 반영되지 않는다. 입력/비즈니스 오류도 공통 error/meta 형식을 유지한다. 일반 `DELETE /api/posts/{postId}`는 제공하지 않아 405와 Allow를 반환한다. 관리자 soft delete는 현재 서비스 훅이며 관리자 삭제 HTTP API는 별도 구현 대상이다. [2026-10-28 재검증](revalidation/post-participation-2026-10-28.md)을 참고한다.
+모집글과 참여 API의 응답 형식은 `application/json`이다. 인증·CSRF 검사를 통과한 요청의 Accept가 이를 허용하지 않으면 컨트롤러 실행 전에 `406 NOT_ACCEPTABLE` JSON을 반환하므로 DB에 변경이 저장되지 않는다. 오류 응답도 JSON Content-Type과 공통 error/meta 형식을 유지한다. 프론트 화면의 description/id/status와 서버 필드 매핑, 세션·프록시 설정은 [프론트 연동 계약](frontend-api-integration.md)을 참고한다. 검증 근거는 [2026-10-28 검증 결과](revalidation/post-participation-2026-10-28.md)와 [2026-11-11 검증 결과](revalidation/post-participation-2026-11-11.md)에 있다.
 
 ## 1. 작성 — POST /api/posts
 
@@ -125,11 +125,16 @@ status 생략 시 기능정의서 DISC-001의 기본 활성 목록으로 **실�
 | 401 | AUTHENTICATION_REQUIRED | 인증 누락 또는 신뢰된 principal/DB 사용자 없음 |
 | 403 | FORBIDDEN_OPERATION / CSRF_INVALID | 타인 수정/CSRF 오류 |
 | 404 | POST_NOT_FOUND | 없는 모집 또는 REMOVED |
+| 405 | METHOD_NOT_ALLOWED | 제공하지 않는 HTTP 메서드. Allow 헤더 포함 |
+| 406 | NOT_ACCEPTABLE | application/json을 허용하지 않는 Accept |
+| 415 | UNSUPPORTED_MEDIA_TYPE | 지원하지 않는 Content-Type |
 | 409 | POST_TIME_CONFLICT | 같은 작성자·기준시각 유효 모집 |
 | 409 | POST_CORE_FIELDS_LOCKED | 잠긴 핵심 조건 변경 |
 | 409 | POST_CANCELLED / POST_FINISHED | 수정 불가능 상태 |
 
 ## 동시성 / DB 적용
+
+수동 마감·모집 전체 취소·관리자 soft delete는 현재 서비스 훅이며 연결 HTTP API는 없다. 일반 `DELETE /api/posts/{postId}`는 제공하지 않아 405다. `DELETE /api/posts/{postId}/participants`는 본인 참여 취소 API로 구분한다. [2026-11-11 검증 결과](revalidation/post-participation-2026-11-11.md)를 참고한다.
 
 작성과 수정은 READ COMMITTED 쓰기 트랜잭션이다. 작성자 USERS 행을 먼저 잠그므로 첫 모집의 동시 생성도 직렬화된다. 수정은 작성자 → POST 순서로 잠근다. 참여/취소는 기존 POST 잠금을 유지하고 작성자 행을 잠그지 않는다. 필요한 잠금을 획득한 다음 서버 시각·상태·참가 조건·중복을 검사하고 저장한다. 실패 시 전체 롤백한다.
 

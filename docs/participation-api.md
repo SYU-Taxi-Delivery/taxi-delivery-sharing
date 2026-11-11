@@ -133,7 +133,7 @@ page는 0 이상, size는 1~50입니다. status는 생략하거나 대문자 JOI
 
 details가 없으면 생략합니다. 오류 응답에는 data가 없습니다.
 
-오류는 요청의 Accept가 지원되지 않는 경우에도 application/json의 공통 error/meta 형식을 유지합니다. 인증·CSRF 검증을 통과한 요청에서 application/json을 허용하지 않는 Accept는 컨트롤러 실행 전에 406 NOT_ACCEPTABLE로 거절하므로 참여·취소가 DB에 반영되지 않습니다. 응답 X-Request-Id와 meta.requestId는 같습니다. [2026-10-28 HTTP·데이터 정합성·동시성 재검증](revalidation/post-participation-2026-10-28.md)을 참고합니다.
+응답 형식은 application/json입니다. 인증·CSRF 검사를 통과한 요청에서 이를 허용하지 않는 Accept는 컨트롤러 실행 전에 406 NOT_ACCEPTABLE로 거절하며, 이때 참여·취소가 DB에 반영되지 않습니다. 오류도 JSON Content-Type과 공통 error/meta 형식을 유지합니다. 응답 X-Request-Id와 meta.requestId는 같습니다. [프론트 연동 계약](frontend-api-integration.md), [2026-10-28 검증 결과](revalidation/post-participation-2026-10-28.md), [2026-11-11 검증 결과](revalidation/post-participation-2026-11-11.md)를 참고합니다.
 
 | HTTP | code |
 |---|---|
