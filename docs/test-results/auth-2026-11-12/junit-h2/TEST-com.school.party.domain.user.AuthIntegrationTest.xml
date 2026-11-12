@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.user.AuthIntegrationTest" tests="25" skipped="0" failures="0" errors="0" timestamp="2026-11-12T01:28:08.655Z" hostname="redacted" time="7.267">
+  <testcase name="EMAIL06_mailFailureIsReportedAndDoesNotBlockRetry()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.042" />
+  <testcase name="EMAIL01_onlySchoolDomainsReceiveCodesAndInvalidInputIs400()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.024" />
+  <testcase name="JOIN02_failureWhileSavingCredentialLeavesNoPartialRowsAndAllowsRetry()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.193" />
+  <testcase name="LOGIN01_fifthConsecutiveFailureLocksForThirtyMinutes()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.636" />
+  <testcase name="JOIN03_duplicateStudentNumberIsConflictWithoutPartialRows()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.105" />
+  <testcase name="EMAIL03_codeExpiresAfterFiveMinutes()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.01" />
+  <testcase name="RACE03_concurrentWrongCodesCannotExceedTheAttemptLimit()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.023" />
+  <testcase name="EMAIL02_addressIsNormalizedSoCaseVariantsShareOneAccount()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.189" />
+  <testcase name="ROLE01_studentAndAdminReachOnlyTheirFunctions()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.379" />
+  <testcase name="RESET02_unknownOrInactiveAccountsGetTheSameAnswerWithoutMail()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.103" />
+  <testcase name="RESET01_resetChangesPasswordAndClearsLock()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.803" />
+  <testcase name="JOIN04_clientCannotChooseRoleAndWeakPasswordsAreRejected()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.104" />
+  <testcase name="DB01_foreignKeysRejectOrphanAuthRowsAndUserDeletionWithCredentials()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.101" />
+  <testcase name="RACE01_concurrentRegistrationWithOneVerificationCreatesOneAccount()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.105" />
+  <testcase name="LOGIN04_concurrentWrongPasswordsAreCountedWithoutLoss()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.988" />
+  <testcase name="RACE02_concurrentRegistrationOfOneStudentNumberCreatesOneAccount()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.219" />
+  <testcase name="EMAIL07_verificationIsSingleUseAndExpires()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.13" />
+  <testcase name="LOGIN05_correctPasswordRacingWrongOnesNeverExceedsFiveFailures()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.538" />
+  <testcase name="LOGIN02_singleTypoAfterLockExpiryStartsANewCount()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.716" />
+  <testcase name="RESET03_wrongExpiredOrWeakInputsKeepTheOldPassword()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.273" />
+  <testcase name="EMAIL05_resendIsThrottledAndReplacesThePreviousCode()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.014" />
+  <testcase name="RESET04_signupAndResetCodesAreNotInterchangeable()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.181" />
+  <testcase name="EMAIL04_fiveWrongCodesInvalidateTheCode()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.017" />
+  <testcase name="LOGIN03_successResetsCounterAndRecordsLoginTime()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.532" />
+  <testcase name="JOIN01_registrationLinksUsersUserAuthAndLocalCredential()" classname="com.school.party.domain.user.AuthIntegrationTest" time="0.267" />
+</testsuite>

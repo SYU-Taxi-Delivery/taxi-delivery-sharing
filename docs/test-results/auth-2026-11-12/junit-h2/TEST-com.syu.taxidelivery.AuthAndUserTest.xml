@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.syu.taxidelivery.AuthAndUserTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-12T01:28:15.927Z" hostname="redacted" time="0.29">
+  <testcase name="TC-USER-01 &amp; 02: 미인증 이메일 가입 차단 테스트" classname="com.syu.taxidelivery.AuthAndUserTest" time="0.285" />
+  <testcase name="TC-AUTH-03: 허용되지 않은 이메일 도메인 입력 예외" classname="com.syu.taxidelivery.AuthAndUserTest" time="0.003" />
+  <testcase name="TC-AUTH-01 &amp; 02: 이메일 인증 번호 검증 테스트" classname="com.syu.taxidelivery.AuthAndUserTest" time="0.002" />
+</testsuite>

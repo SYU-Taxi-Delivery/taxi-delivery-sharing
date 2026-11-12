@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.DemoBasicSecurityHttpTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-12T01:27:48.042Z" hostname="redacted" time="7.925">
+  <testcase name="demoBasicStillRequiresCsrfOnMutations()" classname="com.school.party.domain.community.DemoBasicSecurityHttpTest" time="0.409" />
+  <testcase name="demoBasicAlsoRejectsAnInactiveUser()" classname="com.school.party.domain.community.DemoBasicSecurityHttpTest" time="0.252" />
+  <testcase name="demoBasicAcceptsSeededCredentialsAndRejectsWrongCredentials()" classname="com.school.party.domain.community.DemoBasicSecurityHttpTest" time="0.313" />
+</testsuite>

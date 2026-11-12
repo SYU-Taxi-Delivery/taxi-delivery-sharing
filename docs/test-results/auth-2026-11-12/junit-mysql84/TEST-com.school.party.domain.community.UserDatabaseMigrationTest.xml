@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.UserDatabaseMigrationTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-11-12T01:29:39.139Z" hostname="redacted" time="5.548">
+  <testcase name="independentlyGeneratedJpaSchemaExposesBooleanStorageDifference()" classname="com.school.party.domain.community.UserDatabaseMigrationTest" time="1.605" />
+  <testcase name="existingJpaUserSchemaCanBeComparedBaselinedAndMigratedWithoutLosingData()" classname="com.school.party.domain.community.UserDatabaseMigrationTest" time="1.035" />
+  <testcase name="newDatabaseExecutesBothSqlMigrationsWithoutBaseline()" classname="com.school.party.domain.community.UserDatabaseMigrationTest" time="0.292" />
+  <testcase name="existingNonemptySchemaIsNotAutomaticallyBaselined()" classname="com.school.party.domain.community.UserDatabaseMigrationTest" time="0.259" />
+  <testcase name="baselineDoesNotProveThatAnIncompleteSchemaMatchesV1()" classname="com.school.party.domain.community.UserDatabaseMigrationTest" time="0.443" />
+  <testcase name="[1] alteration = &quot;alter table users modify role enum('STUDENT','ADMIN') not null&quot;" classname="com.school.party.domain.community.UserDatabaseMigrationTest" time="0.305" />
+  <testcase name="[2] alteration = &quot;alter table users modify school_email varchar(99) not null&quot;" classname="com.school.party.domain.community.UserDatabaseMigrationTest" time="0.313" />
+</testsuite>

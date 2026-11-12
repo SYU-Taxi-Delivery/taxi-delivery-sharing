@@ -57,3 +57,9 @@ JPA가 만든 refresh_token.revoked의 BIT(1)와 V1 BOOLEAN(TINYINT(1)) 차이�
 `gradlew test bootJar --rerun-tasks --no-daemon --console=plain`으로 캐시 재사용 없이 기본 테스트 167건과 실행 파일 빌드를 다시 수행했고 모두 성공했다. 외부 DB API 계약 및 마이그레이션 선택 테스트는 이번 실행에서 건너뛰었다. MariaDB 계약 144건과 마이그레이션 7건은 위 2026-10-15의 별도 실행 결과이며, 제출 당일 재실행이나 MySQL 결과로 표시하지 않는다.
 
 실제 팀 사용자 DB 자료 미확보 및 학교 SSO/실제 SMTP/배포 환경 미검증 범위는 유지한다. V1/V2 SQL·운영 DB 설정·기존 CI 구성은 이번 재검증에서 변경하지 않았다. PR 갱신 후 CI 결과는 GitHub Checks에서 확인하며 main 병합·배포는 이 제출에 포함하지 않는다.
+
+## 2026-11-09 5주차 인증·권한·사용자 DB 점검
+
+학교 이메일 인증, 자체 로그인, 비밀번호 재설정, 권한, 동시 요청을 다루는 인증 계약 테스트 25건을 추가했다. 같은 테스트를 H2(`AuthIntegrationTest`)와 MySQL 8.4 Testcontainers(`AuthMySqlIT`, Flyway V1→V2 후 Hibernate validate)에서 실행해 모두 통과했다. 기본 `./gradlew test`는 192건 실행, 실패 0건이다. `UserDatabaseMigrationTest` 7건도 별도 MySQL 8.4.13 컨테이너에서 처음 실행해 통과했다.
+
+MySQL 8.4 회귀 실행에서 `PostMySqlIT` 72건은 통과했고, `ParticipationMySqlIT`는 72건 중 6건이 실패했다. 같은 6건이 수정 전 `main`에서도 실패하며, MySQL CHECK 제약 위반이 `UncategorizedSQLException`으로 분류되는 기존 문제다. [결과·근거·남은 확인 사항](revalidation/auth-week5-2026-11-09.md)을 참고한다.
