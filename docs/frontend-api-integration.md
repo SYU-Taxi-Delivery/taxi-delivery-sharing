@@ -2,6 +2,8 @@
 
 검증일: 2026-11-11. 관련 Issue: #20. 프론트엔드 저장소 `SYU-Taxi-Delivery/taxi-delivery-sharing-fe`의 커밋 `f7bd91c3be2277dc025c2667033763ced12bb161`에 있는 실제 API 어댑터를 기준으로 대조했다.
 
+계약 정정일: 2026-11-12. PR #18·#19가 반영된 main `f45d831`의 현재 가입 DTO와 도메인 정책을 확인했다. 아래 가입 계약은 이 최신 백엔드 기준이며, 11월 11일의 고정 프론트 소스 검증 이력과 구분한다.
+
 ## 경로와 응답
 
 모집글·참여 API는 `{data, meta: {evaluatedAt, requestId}}` JSON을 반환한다. 실패는 `{error: {code, message, details?}, meta}`이며 성공 data가 없다. ID는 문자열, 인원은 숫자, 가능 여부는 boolean, 시각은 offset을 포함한 ISO 8601이다. `referenceTime`은 분 단위, 응답 시각은 +09:00이며 DB에는 UTC로 저장한다.
@@ -51,6 +53,21 @@ BACKEND_ORIGIN=http://localhost:8080
 
 첫 값은 브라우저가 호출하는 프론트 origin, 두 번째는 Next 서버가 접근하는 Spring 주소다. 배포 주소와 HTTPS/프록시/쿠키 설정은 배포 환경에서 다시 확인한다. NEXT_PUBLIC_*에는 비밀값을 넣지 않는다.
 
+## 현재 학교 가입 계약
+
+회원가입은 **학번(studentNo) + 이름(name)** 기준이다. 최종 POST /api/auth/school-email/register에는 이메일 인증을 완료한 뒤 다음 필드를 전송한다. 닉네임은 별도 가입 필드가 아니며 name과 임의로 같은 의미로 취급하지 않는다.
+
+| 요청 필드 | 의미 |
+|---|---|
+| studentNo | 학번 |
+| name | 이름 |
+| schoolEmail | 인증을 완료한 학교 이메일 |
+| password | 가입 비밀번호 |
+
+학교 이메일은 기본 설정에서 **@syuin.ac.kr를 허용하며, 기존 @syu.ac.kr도 허용**한다. 공백 제거·소문자 변환 후 도메인을 정확히 비교한다. 허용 목록은 app.auth.school-email.allowed-domains로 변경할 수 있으므로 배포 설정이 별도로 있으면 확인한다.
+
+근거는 [SchoolRegisterRequest](../src/main/java/com/school/party/domain/user/dto/SchoolRegisterRequest.java)와 [SchoolEmailPolicy](../src/main/java/com/school/party/domain/user/service/SchoolEmailPolicy.java)다. 프론트 가입 화면의 학번·이름 필드 및 signupOperations 연결은 이 계약에 맞춰 확인하며, 백엔드가 @syu.ac.kr만 허용해서 가입을 연결할 수 없다는 이전 설명은 적용하지 않는다. 이 문서 정정만으로 프론트 가입·실제 메일 발송의 E2E가 완료됐다고 표시하지 않는다.
+
 ## 오류 처리
 
 | 상황 | 서버 결과 | 프론트 동작 |
@@ -81,6 +98,6 @@ Remove-Item Env:FRONTEND_CONTRACT_SOURCE
 
 ## 다른 담당자와 확인할 연동 항목
 
-- 학교 가입: 현재 백엔드는 @syu.ac.kr 및 학번, 프론트 가입 화면은 @syuin.ac.kr 및 닉네임을 사용해 프론트 signupOperations가 미연결 상태다. 인증 담당자의 계약 확정이 필요하며 이번 모집글·참여 작업에서 임의 변경하지 않았다.
+- 학교 가입: 위의 학번·이름 DTO와 @syuin.ac.kr 허용 정책이 현재 백엔드 계약이다. 프론트 signupOperations의 실제 연결 상태와 화면 필드 매핑은 별도 확인 항목이며 도메인 허용 여부와 구분한다. 11월 11일 고정 프론트 소스에서 가입 어댑터가 notConnected였다는 검증 이력으로 현재 백엔드의 미지원 여부를 판단하지 않는다.
 - 현재 사용자 전용 API가 없어 프론트는 저장한 최소 사용자 정보와 참여 내역 인증 조회로 세션을 확인한다.
 - 작성자 마감·모집 전체 취소·관리자 삭제, 신고·댓글, 내 작성글 이력은 연결 HTTP API가 없다. 서비스 훅 테스트나 화면 미리보기 통과를 API 연동 완료로 표시하지 않는다.
