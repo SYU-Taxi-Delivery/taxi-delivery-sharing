@@ -1,0 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.syu.taxidelivery.TaxiDeliverySharingApplicationTests" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-11-12T01:28:16.217Z" hostname="redacted" time="0.363">
+  <testcase name="contextLoads()" classname="com.syu.taxidelivery.TaxiDeliverySharingApplicationTests" time="0.002" />
+</testsuite>
