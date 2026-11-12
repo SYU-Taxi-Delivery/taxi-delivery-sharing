@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN 2.0//EN" "https://www.springframework.org/dtd/spring-beans-2.0.dtd">
+
+<!--
+	Overrides the "MySQL" entry of Spring JDBC's default sql-error-codes.xml (spring-jdbc 7.0.9).
+	MySQL 8.0.16+ reports a CHECK constraint violation as error 3819 with SQLState HY000, which the
+	default table does not list, so JdbcTemplate raised UncategorizedSQLException instead of
+	DataIntegrityViolationException. MariaDB reports error 4025 (SQLState 23000).
+	All other codes are copied unchanged from the default file. Other databases keep their defaults.
+-->
+<beans>
+
+	<bean id="MySQL" class="org.springframework.jdbc.support.SQLErrorCodes">
+		<property name="databaseProductNames">
+			<list>
+				<value>MySQL</value>
+				<value>MariaDB</value>
+			</list>
+		</property>
+		<property name="badSqlGrammarCodes">
+			<value>1054,1064,1146</value>
+		</property>
+		<property name="duplicateKeyCodes">
+			<value>1062</value>
+		</property>
+		<property name="dataIntegrityViolationCodes">
+			<value>630,839,840,893,1169,1215,1216,1217,1364,1451,1452,1557,3819,4025</value>
+		</property>
+		<property name="dataAccessResourceFailureCodes">
+			<value>1</value>
+		</property>
+		<property name="cannotAcquireLockCodes">
+			<value>1205,3572</value>
+		</property>
+		<property name="deadlockLoserCodes">
+			<value>149,1213</value>
+		</property>
+	</bean>
+
+</beans>
