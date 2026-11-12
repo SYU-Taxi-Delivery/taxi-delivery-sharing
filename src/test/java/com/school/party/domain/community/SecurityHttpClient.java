@@ -26,7 +26,7 @@ final class SecurityHttpClient implements AutoCloseable {
 
     HttpResponse<String> send(String method, String path, String body, Token csrf, String authorization) throws Exception {
         var request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
-            .timeout(Duration.ofSeconds(20));
+            .timeout(Duration.ofSeconds(20)).header("Accept", "application/json");
         if (!cookies.isEmpty()) request.header("Cookie", cookies.entrySet().stream()
             .map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining("; ")));
         if (csrf != null) request.header(csrf.header(), csrf.value());
