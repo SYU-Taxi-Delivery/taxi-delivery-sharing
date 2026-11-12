@@ -509,6 +509,124 @@ public abstract class ParticipationContract {
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.action").value("REJOIN"))
             .andExpect(jsonPath("$.data.participation.participationId").value(first.participationId()));
     }
+
+    @Test void REV_HTTP_joinCancelRejoinMatchesDatabaseAndFilteredHistory() throws Exception {
+        var first = mvc.perform(post("/api/posts/{id}/participants", id()).with(as(student)).with(csrf()))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.data.action").value("INITIAL_JOIN"))
+            .andExpect(jsonPath("$.data.post.currentMemberCount").value(2)).andReturn();
+        var initial = mapper.readTree(first.getResponse().getContentAsString()).path("data").path("participation");
+        String recordId = initial.path("participationId").asText(), createdAt = initial.path("createdAt").asText();
+        clock.set(NOW.plusSeconds(30));
+        mvc.perform(delete("/api/posts/{id}/participants", id()).with(as(student)).with(csrf()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.action").value("CANCEL"))
+            .andExpect(jsonPath("$.data.participation.status").value("CANCELLED"))
+            .andExpect(jsonPath("$.data.participation.createdAt").value(createdAt))
+            .andExpect(jsonPath("$.data.post.currentMemberCount").value(1));
+        mvc.perform(get("/api/users/me/participations").param("status", "CANCELLED").with(as(student)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(1));
+        mvc.perform(get("/api/users/me/participations").param("status", "JOINED").with(as(student)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(0));
+        clock.set(NOW.plusSeconds(60));
+        mvc.perform(post("/api/posts/{id}/participants", id()).with(as(student)).with(csrf()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.action").value("REJOIN"))
+            .andExpect(jsonPath("$.data.participation.participationId").value(recordId))
+            .andExpect(jsonPath("$.data.participation.createdAt").value(createdAt))
+            .andExpect(jsonPath("$.data.participation.updatedAt").value("2026-10-06T17:01:00+09:00"))
+            .andExpect(jsonPath("$.data.participation.cancelledAt").isEmpty())
+            .andExpect(jsonPath("$.data.post.currentMemberCount").value(2));
+        var saved = participations.findByPost_IdAndUser_Id(id(), actor()).orElseThrow();
+        assertThat(saved.getId().toString()).isEqualTo(recordId);
+        assertThat(saved.getCreatedAt()).isEqualTo(NOW); assertThat(saved.getUpdatedAt()).isEqualTo(NOW.plusSeconds(60));
+        assertThat(saved.getCancelledAt()).isNull(); assertThat(participations.count()).isEqualTo(1);
+        mvc.perform(get("/api/users/me/participations").param("status", "CANCELLED").with(as(student)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(0));
+        mvc.perform(get("/api/users/me/participations").param("status", "JOINED").with(as(student)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.items[0].participationId").value(recordId));
+    }
+
+    @ParameterizedTest @ValueSource(strings = {"join", "cancel", "mine", "members"})
+    void REV_HTTP_missingRecruitmentReturns404WithoutMutation(String action) throws Exception {
+        String path = "/api/posts/" + Long.MAX_VALUE + "/participants";
+        var request = switch (action) {
+            case "join" -> post(path);
+            case "cancel" -> delete(path);
+            case "mine" -> get(path + "/me");
+            default -> get(path);
+        };
+        mvc.perform(request.with(as(student)).with(csrf())).andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.error.code").value("POST_NOT_FOUND"))
+            .andExpect(jsonPath("$.data").doesNotExist());
+        assertThat(posts.count()).isEqualTo(1); assertThat(participations.count()).isZero();
+    }
+
+    @ParameterizedTest @ValueSource(ints = {601, 600, 599})
+    void REV_HTTP_cancelDeadlineBoundaryPreservesFullStateOnFailure(int remainingSeconds) throws Exception {
+        Post small = twoSeats(); service.join(small.getId(), actor());
+        clock.set(small.getReferenceTime().minusSeconds(remainingSeconds));
+        var result = mvc.perform(delete("/api/posts/{id}/participants", small.getId()).with(as(student)).with(csrf())).andReturn();
+        var json = mapper.readTree(result.getResponse().getContentAsString());
+        var saved = participations.findByPost_IdAndUser_Id(small.getId(), actor()).orElseThrow();
+        if (remainingSeconds == 601) {
+            assertThat(result.getResponse().getStatus()).isEqualTo(200);
+            assertThat(json.path("data").path("post").path("postStatus").asText()).isEqualTo("OPEN");
+            assertThat(json.path("data").path("post").path("currentMemberCount").asInt()).isEqualTo(1);
+            assertThat(saved.getStatus()).isEqualTo(ParticipationStatus.CANCELLED);
+            assertThat(active(small.getId())).isZero();
+        } else {
+            assertThat(result.getResponse().getStatus()).isEqualTo(409);
+            assertThat(json.path("error").path("code").asText()).isEqualTo("CANCEL_TIME_CLOSED");
+            assertThat(saved.getStatus()).isEqualTo(ParticipationStatus.JOINED);
+            assertThat(saved.getUpdatedAt()).isEqualTo(NOW); assertThat(saved.getCancelledAt()).isNull();
+            assertThat(posts.findById(small.getId()).orElseThrow().getStatus()).isEqualTo(PostStatus.FULL);
+            assertThat(active(small.getId())).isEqualTo(1);
+        }
+    }
+
+    @Test void REV_TXN_concurrentCancelsHaveOneSuccessAndDoNotSubtractTwice() throws Exception {
+        Post small = twoSeats(); service.join(small.getId(), actor()); clock.set(NOW.plusSeconds(30));
+        var outcomes = compete(List.of(() -> attempt(() -> service.cancel(small.getId(), actor())),
+            () -> attempt(() -> service.cancel(small.getId(), actor()))));
+        assertThat(outcomes).containsExactlyInAnyOrder("OK", "ALREADY_CANCELLED");
+        assertThat(active(small.getId())).isZero(); assertThat(participations.count()).isEqualTo(1);
+        assertThat(posts.findById(small.getId()).orElseThrow().getStatus()).isEqualTo(PostStatus.OPEN);
+        assertThat(service.mine(small.getId(), actor()).data().post().currentMemberCount()).isEqualTo(1);
+    }
+
+    @Test void REV_TXN_concurrentRejoinsReactivateOneExistingRecordOnly() throws Exception {
+        var initial = service.join(id(), actor()).data().participation();
+        clock.set(NOW.plusSeconds(30)); service.cancel(id(), actor()); clock.set(NOW.plusSeconds(60));
+        var outcomes = compete(List.of(() -> attempt(() -> service.join(id(), actor())), () -> attempt(() -> service.join(id(), actor()))));
+        assertThat(outcomes).containsExactlyInAnyOrder("OK", "ALREADY_JOINED");
+        var saved = participations.findByPost_IdAndUser_Id(id(), actor()).orElseThrow();
+        assertThat(saved.getId().toString()).isEqualTo(initial.participationId());
+        assertThat(saved.getCreatedAt()).isEqualTo(NOW); assertThat(saved.getUpdatedAt()).isEqualTo(NOW.plusSeconds(60));
+        assertThat(saved.getCancelledAt()).isNull(); assertThat(participations.count()).isEqualTo(1);
+        assertThat(active(id())).isEqualTo(1);
+    }
+
+    @Test void REV_TXN_waitingJoinCanTakeTheSeatFreedByCommittedCancel() throws Exception {
+        Post small = twoSeats(); service.join(small.getId(), actor());
+        assertThat(ordered(small.getId(), () -> service.cancel(small.getId(), actor()),
+            () -> service.join(small.getId(), other.getId()), () -> {}, true)).isEqualTo("OK");
+        assertThat(posts.findById(small.getId()).orElseThrow().getStatus()).isEqualTo(PostStatus.FULL);
+        assertThat(active(small.getId())).isEqualTo(1);
+        assertThat(participations.findByPost_IdAndUser_Id(small.getId(), actor()).orElseThrow().getStatus()).isEqualTo(ParticipationStatus.CANCELLED);
+        assertThat(participations.findByPost_IdAndUser_Id(small.getId(), other.getId()).orElseThrow().getStatus()).isEqualTo(ParticipationStatus.JOINED);
+    }
+
+    @ParameterizedTest @ValueSource(strings = {"join", "cancel"})
+    void REV_HTTP_unsupportedAcceptMustNotCommitParticipationMutation(String action) throws Exception {
+        Post small = twoSeats(); boolean cancelling = action.equals("cancel");
+        if (cancelling) service.join(small.getId(), actor());
+        var request = cancelling ? delete("/api/posts/{id}/participants", small.getId())
+            : post("/api/posts/{id}/participants", small.getId());
+        mvc.perform(request.with(as(student)).with(csrf()).accept(org.springframework.http.MediaType.TEXT_PLAIN))
+            .andExpect(status().isNotAcceptable()).andExpect(jsonPath("$.error.code").value("NOT_ACCEPTABLE"));
+        assertThat(active(small.getId())).isEqualTo(cancelling ? 1 : 0);
+        assertThat(posts.findById(small.getId()).orElseThrow().getStatus()).isEqualTo(cancelling ? PostStatus.FULL : PostStatus.OPEN);
+        if (cancelling) assertThat(participations.findByPost_IdAndUser_Id(small.getId(), actor()).orElseThrow().getCancelledAt()).isNull();
+        else assertThat(participations.findByPost_IdAndUser_Id(small.getId(), actor())).isEmpty();
+    }
     @Test void HTTP_unauthenticatedReadIs401() throws Exception {
         mvc.perform(get("/api/posts/{id}/participants/me", id())).andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.error.code").value("AUTHENTICATION_REQUIRED"));

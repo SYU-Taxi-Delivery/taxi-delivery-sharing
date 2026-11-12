@@ -166,6 +166,30 @@ class SessionSecurityHttpTest {
         assertThat(browser.send("POST", "/api/auth/local/login", LOGIN, browser.csrf()).statusCode()).isEqualTo(200);
     }
 
+    @Test void REV_realHttpUnsupportedAcceptCannotWriteAndReturnsJsonError() throws Exception {
+        login();
+        String cookies = browser.cookies.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue())
+            .collect(java.util.stream.Collectors.joining("; "));
+        var request = java.net.http.HttpRequest.newBuilder(java.net.URI.create("http://127.0.0.1:" + port + "/api/posts"))
+            .timeout(Duration.ofSeconds(10)).header("Cookie", cookies).header("Accept", "text/plain").GET().build();
+        var response = java.net.http.HttpClient.newHttpClient().send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(406);
+        assertThat(response.headers().firstValue("Content-Type").orElse("")).startsWith("application/json");
+        browser.error(response, 406, "NOT_ACCEPTABLE");
+        assertThat(mapper.readTree(response.body()).path("meta").path("requestId").asText())
+            .isEqualTo(response.headers().firstValue("X-Request-Id").orElseThrow());
+        var token = browser.csrf();
+        cookies = browser.cookies.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue())
+            .collect(java.util.stream.Collectors.joining("; "));
+        var create = java.net.http.HttpRequest.newBuilder(java.net.URI.create("http://127.0.0.1:" + port + "/api/posts"))
+            .timeout(Duration.ofSeconds(10)).header("Cookie", cookies).header("Accept", "text/plain")
+            .header("Content-Type", "application/json").header(token.header(), token.value())
+            .POST(java.net.http.HttpRequest.BodyPublishers.ofString(postBody())).build();
+        var denied = java.net.http.HttpClient.newHttpClient().send(create, java.net.http.HttpResponse.BodyHandlers.ofString());
+        browser.error(denied, 406, "NOT_ACCEPTABLE");
+        assertThat(posts.count()).isZero();
+    }
+
     private String postBody() {
         String time = clock.instant().plusSeconds(3600).truncatedTo(ChronoUnit.MINUTES).atOffset(ZoneOffset.UTC).toString();
         return mapper.writeValueAsString(Map.of("type", "TAXI", "title", "세션 검증 모집", "content", "함께 이동",

@@ -11,6 +11,7 @@ import java.net.URI;
 import static com.school.party.domain.community.api.ApiModels.*;
 
 @RestController
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
 public class ParticipationController {
     private final ParticipationService service;
     private final CurrentUser currentUser;

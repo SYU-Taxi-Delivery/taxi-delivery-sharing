@@ -13,7 +13,7 @@ import static com.school.party.domain.community.api.ApiModels.*;
 import static com.school.party.domain.community.post.PostResponse.*;
 
 @RestController
-@RequestMapping("/api/posts")
+@RequestMapping(value = "/api/posts", produces = MediaType.APPLICATION_JSON_VALUE)
 public class PostController {
     private final PostService service;
     private final CurrentUser currentUser;
