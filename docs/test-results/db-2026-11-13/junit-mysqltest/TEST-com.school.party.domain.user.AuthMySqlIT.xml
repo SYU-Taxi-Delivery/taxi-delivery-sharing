@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.user.AuthMySqlIT" tests="25" skipped="0" failures="0" errors="0" timestamp="2026-11-13T17:53:54.347Z" hostname="redacted" time="17.128">
+  <testcase name="EMAIL06_mailFailureIsReportedAndDoesNotBlockRetry()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.111" />
+  <testcase name="EMAIL01_onlySchoolDomainsReceiveCodesAndInvalidInputIs400()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.045" />
+  <testcase name="JOIN02_failureWhileSavingCredentialLeavesNoPartialRowsAndAllowsRetry()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.218" />
+  <testcase name="LOGIN01_fifthConsecutiveFailureLocksForThirtyMinutes()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.63" />
+  <testcase name="JOIN03_duplicateStudentNumberIsConflictWithoutPartialRows()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.129" />
+  <testcase name="EMAIL03_codeExpiresAfterFiveMinutes()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.026" />
+  <testcase name="RACE03_concurrentWrongCodesCannotExceedTheAttemptLimit()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.039" />
+  <testcase name="EMAIL02_addressIsNormalizedSoCaseVariantsShareOneAccount()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.212" />
+  <testcase name="ROLE01_studentAndAdminReachOnlyTheirFunctions()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.401" />
+  <testcase name="RESET02_unknownOrInactiveAccountsGetTheSameAnswerWithoutMail()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.123" />
+  <testcase name="RESET01_resetChangesPasswordAndClearsLock()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.823" />
+  <testcase name="JOIN04_clientCannotChooseRoleAndWeakPasswordsAreRejected()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.122" />
+  <testcase name="DB01_foreignKeysRejectOrphanAuthRowsAndUserDeletionWithCredentials()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.123" />
+  <testcase name="RACE01_concurrentRegistrationWithOneVerificationCreatesOneAccount()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.13" />
+  <testcase name="LOGIN04_concurrentWrongPasswordsAreCountedWithoutLoss()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.894" />
+  <testcase name="RACE02_concurrentRegistrationOfOneStudentNumberCreatesOneAccount()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.156" />
+  <testcase name="EMAIL07_verificationIsSingleUseAndExpires()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.113" />
+  <testcase name="LOGIN05_correctPasswordRacingWrongOnesNeverExceedsFiveFailures()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.759" />
+  <testcase name="LOGIN02_singleTypoAfterLockExpiryStartsANewCount()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.685" />
+  <testcase name="RESET03_wrongExpiredOrWeakInputsKeepTheOldPassword()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.25" />
+  <testcase name="EMAIL05_resendIsThrottledAndReplacesThePreviousCode()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.034" />
+  <testcase name="RESET04_signupAndResetCodesAreNotInterchangeable()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.186" />
+  <testcase name="EMAIL04_fiveWrongCodesInvalidateTheCode()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.041" />
+  <testcase name="LOGIN03_successResetsCounterAndRecordsLoginTime()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.553" />
+  <testcase name="JOIN01_registrationLinksUsersUserAuthAndLocalCredential()" classname="com.school.party.domain.user.AuthMySqlIT" time="0.254" />
+</testsuite>

@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.ConstraintTranslationMySqlIT" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-13T17:53:06.889Z" hostname="redacted" time="15.424">
+  <testcase name="jdbcTemplateClassifiesCheckViolationAsDataIntegrityViolation()" classname="com.school.party.domain.community.ConstraintTranslationMySqlIT" time="0.469" />
+  <testcase name="existingMySqlCodesKeepTheirMoreSpecificTypes()" classname="com.school.party.domain.community.ConstraintTranslationMySqlIT" time="0.061" />
+  <testcase name="jpaFlushClassifiesCheckViolationAsDataIntegrityViolation()" classname="com.school.party.domain.community.ConstraintTranslationMySqlIT" time="0.101" />
+</testsuite>
