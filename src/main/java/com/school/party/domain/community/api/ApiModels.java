@@ -14,7 +14,7 @@ public final class ApiModels {
     public record Error(String code, String message, @JsonInclude(JsonInclude.Include.NON_EMPTY) Map<String, Object> details) {}
     public record Result<T>(T data, Instant evaluatedAt) {}
     public record ParticipationView(String participationId, String postId, ParticipationStatus status, OffsetDateTime createdAt, OffsetDateTime updatedAt, OffsetDateTime cancelledAt) {}
-    public record PostView(String postId, PostType type, PostStatus postStatus, OffsetDateTime referenceTime, OffsetDateTime participationDeadline, int capacity, long currentMemberCount, long remainingSeats, boolean joinable) {}
+    public record PostView(String postId, PostType type, PostStatus postStatus, RecruitmentStatus recruitmentStatus, OffsetDateTime referenceTime, OffsetDateTime participationDeadline, int capacity, long currentMemberCount, long remainingSeats, boolean joinable) {}
     public record Viewer(boolean isAuthor, String myParticipationStatus, boolean canJoin, boolean canCancel) {}
     public record StateView(ParticipationView participation, PostView post, Viewer viewer) {}
     public record MutationView(String action, ParticipationView participation, PostView post, Viewer viewer) {}
@@ -22,7 +22,15 @@ public final class ApiModels {
     public record MemberView(String participationId, String displayName) {}
     public record MembersView(String postId, PostStatus postStatus, int capacity, long currentMemberCount, AuthorView author, List<MemberView> participants) {}
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record HistoryPost(String postId, PostStatus postStatus, boolean isRemoved, PostType type, String title, OffsetDateTime referenceTime, String message) {}
+    /**
+     * The post as the member sees it in "my activity": the same schedule, places,
+     * author and counts as list and detail. communicationUrl only while the viewer
+     * is a current member of an active schedule.
+     */
+    public record HistoryPost(String postId, PostStatus postStatus, RecruitmentStatus recruitmentStatus, boolean isRemoved,
+        PostType type, String title, OffsetDateTime referenceTime, OffsetDateTime participationDeadline,
+        Integer capacity, Long currentMemberCount, Long remainingSeats, String departure, String destination,
+        String restaurantName, String pickupLocation, AuthorView author, String communicationUrl, String message) {}
     public record HistoryItem(String participationId, ParticipationStatus participationStatus, OffsetDateTime createdAt, OffsetDateTime updatedAt, OffsetDateTime cancelledAt, HistoryPost post) {}
     public record HistoryView(List<HistoryItem> items, int page, int size, long totalElements, int totalPages) {}
 }

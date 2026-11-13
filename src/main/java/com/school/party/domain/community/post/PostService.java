@@ -78,16 +78,47 @@ public class PostService {
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Result<PageView> list(long actorId, int page, int size, String type, String status) {
+        actor(actorId);
+        return list(actorId, page, size, type, status, PostSearch.NONE);
+    }
+
+    /** List with optional place/time search. The search is parsed by the caller (see PostSearch.parse). */
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public Result<PageView> list(long actorId, int page, int size, String type, String status, PostSearch search) {
         actor(actorId); Instant now = clock.instant();
-        PostListFilter filter = PostListFilter.parse(page, size, type, status, now);
-        Page<Post> found = posts.findAll(filter.specification(now), PageRequest.of(page, size, Sort.by("referenceTime", "id")));
-        Map<Long, Long> joined = new HashMap<>();
-        if (!found.isEmpty()) {
-            for (var count : participations.countJoinedByPosts(found.getContent().stream().map(Post::getId).toList()))
-                joined.put(count.getPostId(), count.getJoinedCount());
-        }
+        PostListFilter filter = PostListFilter.parse(page, size, type, status, search, now);
+        Sort order = filter.search().sort() == PostSearch.Sort.RECENT
+            ? Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")) : Sort.by("referenceTime", "id");
+        Page<Post> found = posts.findAll(filter.specification(now), PageRequest.of(page, size, order));
+        Map<Long, Long> joined = joinedCounts(found.getContent());
         List<ListItem> items = found.map(p -> PostResponse.item(p, 1 + joined.getOrDefault(p.getId(), 0L), now)).getContent();
         return new Result<>(new PageView(items, page, size, found.getTotalElements(), found.getTotalPages()), now);
+    }
+
+    /**
+     * The author's own posts for "내 활동": active and past, newest schedule first,
+     * removed posts excluded. Same item shape as the list, plus the communication
+     * link while the schedule is active (the author may always see their own link).
+     */
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public Result<PageView> mine(long actorId, int page, int size) {
+        actor(actorId); Instant now = clock.instant();
+        if (page < 0 || size < 1 || size > 50 || (long) page * size > Integer.MAX_VALUE) throw new ApiException(INVALID_QUERY_PARAMETER, now);
+        Page<Post> found = posts.findByAuthor_IdAndDeletedAtIsNull(actorId,
+            PageRequest.of(page, size, Sort.by(Sort.Order.desc("referenceTime"), Sort.Order.desc("id"))));
+        Map<Long, Long> joined = joinedCounts(found.getContent());
+        List<ListItem> items = found.map(p -> PostResponse.item(p, 1 + joined.getOrDefault(p.getId(), 0L), now,
+            PostResponse.canViewLink(p, true, false, now) ? p.contentValues().communicationUrl() : null)).getContent();
+        return new Result<>(new PageView(items, page, size, found.getTotalElements(), found.getTotalPages()), now);
+    }
+
+    private Map<Long, Long> joinedCounts(List<Post> found) {
+        Map<Long, Long> joined = new HashMap<>();
+        if (!found.isEmpty()) {
+            for (var count : participations.countJoinedByPosts(found.stream().map(Post::getId).toList()))
+                joined.put(count.getPostId(), count.getJoinedCount());
+        }
+        return joined;
     }
 
     private void noConflict(long authorId, long excludedId, Instant reference, Instant now) {

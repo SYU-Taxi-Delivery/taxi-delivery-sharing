@@ -7,6 +7,8 @@ import org.springframework.data.jpa.domain.Specification;
 public interface PostRepository extends JpaRepository<Post, Long>, JpaSpecificationExecutor<Post>, LockedPostRepository {
     @EntityGraph(attributePaths = "author")
     Page<Post> findAll(Specification<Post> spec, Pageable pageable);
+    @EntityGraph(attributePaths = "author")
+    Page<Post> findByAuthor_IdAndDeletedAtIsNull(long authorId, Pageable pageable);
     @Query("select count(p) from Post p where p.author.id = :authorId and p.id <> :excludedId and p.referenceTime = :referenceTime and p.referenceTime > :now and p.deletedAt is null and p.status in (com.school.party.domain.community.domain.PostStatus.OPEN, com.school.party.domain.community.domain.PostStatus.FULL, com.school.party.domain.community.domain.PostStatus.CLOSED)")
     long countConflicts(@Param("authorId") long authorId, @Param("excludedId") long excludedId,
         @Param("referenceTime") java.time.Instant referenceTime, @Param("now") java.time.Instant now);

@@ -64,6 +64,18 @@ public class Post {
         if (status == PostStatus.FINISHED || !now.isBefore(referenceTime)) return PostStatus.FINISHED;
         return status;
     }
+    /** One shared rule for list, detail, history and server validation. */
+    public RecruitmentStatus recruitmentStatus(Instant now, long memberCount) {
+        return switch (effectiveStatus(now)) {
+            case REMOVED -> RecruitmentStatus.REMOVED;
+            case CANCELLED -> RecruitmentStatus.CANCELLED;
+            case FINISHED -> RecruitmentStatus.FINISHED;
+            case CLOSED -> RecruitmentStatus.CLOSED;
+            case FULL -> RecruitmentStatus.FULL;
+            case OPEN -> memberCount >= capacity ? RecruitmentStatus.FULL
+                : now.isBefore(deadline()) ? RecruitmentStatus.RECRUITING : RecruitmentStatus.APPLICATION_CLOSED;
+        };
+    }
     public void transitionTo(PostStatus next, Instant now) {
         boolean active = status == PostStatus.OPEN || status == PostStatus.FULL || status == PostStatus.CLOSED;
         boolean allowed = (next == PostStatus.REMOVED && status != PostStatus.REMOVED)
