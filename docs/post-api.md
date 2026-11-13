@@ -108,10 +108,45 @@ GET /api/posts?status=FINISHED
 | size | 20 | 1~50 |
 | type | ALL | ALL / TAXI / DELIVERY |
 | status | 기본 활성 영역 | OPEN / FULL / CLOSED / CANCELLED / FINISHED / ALL |
+| q | 없음 | 출발지·도착지·음식점·수령 장소·제목 중 하나라도 포함 (100자 이하) |
+| departure, destination | 없음 | 택시 출발지·도착지 포함 검색 |
+| restaurant, pickup | 없음 | 배달 음식점·수령 장소 포함 검색 |
+| direction | 없음 | TO_SCHOOL(도착지가 학교) / FROM_SCHOOL(출발지가 학교) |
+| from, to | 없음 | 기준시각 구간, ISO-8601+오프셋. from 이상, to 미만. from < to |
+| joinable | false | true면 지금 참여할 수 있는 글만 (실질 OPEN, 기준시각 10분 전 이전) |
+| sort | TIME | TIME(기준시각 빠른 순) / RECENT(최근 작성 순) |
+
+장소 검색은 공백·대소문자·'역'을 무시한다. `태릉`, `태릉입구`, `태릉 입구역`은 모두 `태릉입구역 7번 출구`와, `7번출구`는 `7번 출구`와 일치한다. 학교 방향은 장소에 `삼육대`가 들어 있는지로 판단한다.
 
 status 생략 시 기능정의서 DISC-001의 기본 활성 목록으로 **실질 OPEN/FULL만** 조회한다. CLOSED/취소/종료는 명시적 필터로 조회한다. ALL도 REMOVED는 항상 제외한다. BR-03의 유효 모집 OPEN/FULL/CLOSED와 기본 탐색 목록 범위를 구분한다.
 
-정렬은 referenceTime ASC, id ASC로 고정한다. data는 `items/page/size/totalElements/totalPages`. items는 제목, 유형, 장소, 실질 상태, 기준/참여마감시각, 정원/인원/여석/joinable이며 본문·소통 링크·개인정보는 포함하지 않는다. 페이지의 참여 인원은 묶어서 집계하며 모집별 개별 count 쿼리를 반복하지 않는다. 이번 범위에 전문 검색·유사 추천 API는 추가하지 않았다.
+정렬은 기본 referenceTime ASC, id ASC이고 `sort=RECENT`면 createdAt DESC, id DESC다. data는 `items/page/size/totalElements/totalPages`. items는 제목, 유형, 장소, 실질 상태(`postStatus`), 공개 모집 상태(`recruitmentStatus`), 기준/참여마감시각, 정원/인원/여석/joinable, 작성자 표시 이름이며 상세와 같은 값을 쓴다. 본문·소통 링크·명단은 포함하지 않는다. 페이지의 참여 인원은 묶어서 집계하며 모집별 개별 count 쿼리를 반복하지 않는다.
+
+### 공개 모집 상태 recruitmentStatus
+
+목록·상세·내 참여·내 작성 글·참여 응답이 같은 규칙으로 계산한다. 사용자별 관계(`viewer.myParticipationStatus`: NONE/JOINED/CANCELLED)와는 따로 내려간다. 예: 정원 마감(FULL)이어도 나는 JOINED일 수 있다.
+
+| 값 | 뜻 |
+|---|---|
+| RECRUITING | 실질 OPEN, 여석 있음, 참여 마감 전 |
+| FULL | 정원 마감. 참여 마감 전에 누가 취소하면 RECRUITING으로 돌아간다 |
+| CLOSED | 작성자가 현재 인원으로 마감 |
+| APPLICATION_CLOSED | 참여 마감(T-10분) 이후, 기준시각 전 |
+| CANCELLED | 작성자가 일정 자체를 취소 |
+| FINISHED | 기준시각 이후 |
+| REMOVED | 관리자 삭제 (목록에 나오지 않음) |
+
+## 5. 작성자 마감 — POST /api/posts/{postId}/close
+
+본문 없이 CSRF 토큰과 함께 보낸다. 작성자만 가능하며 OPEN/FULL만 CLOSED로 바꾼다. 참가자와 소통 링크는 유지되고 새 참여만 막힌다. 응답은 최신 상세(`recruitmentStatus=CLOSED`). 작성자가 아니면 403 FORBIDDEN_OPERATION, 이미 마감이면 409 POST_CLOSED, 취소·종료면 409 POST_CANCELLED/POST_FINISHED.
+
+## 6. 일정 취소 — POST /api/posts/{postId}/cancel
+
+작성자만 가능하며 OPEN/FULL/CLOSED를 CANCELLED로 바꾸고 모든 참가자를 취소한다. 되돌릴 수 없다. 응답은 최신 상세(`recruitmentStatus=CANCELLED`, 인원 1명). 소통 링크는 더 이상 누구에게도 내려가지 않는다.
+
+## 7. 내 작성 글 — GET /api/users/me/posts
+
+`page`(0~), `size`(1~50). 관리자 삭제 글을 뺀 본인 작성 글 전체를 기준시각 최근 순으로 준다. 항목 형식은 목록과 같고, 일정이 활성(OPEN/FULL/CLOSED)인 동안 본인 글의 `communicationUrl`을 함께 준다.
 
 ## 주요 오류
 

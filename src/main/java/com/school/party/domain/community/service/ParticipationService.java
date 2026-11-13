@@ -7,6 +7,7 @@ import com.school.party.domain.user.repository.UserRepository;
 import com.school.party.domain.community.api.*;
 import com.school.party.domain.community.domain.*;
 import com.school.party.domain.community.repository.*;
+import com.school.party.domain.community.post.PostResponse;
 import org.slf4j.*;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,12 @@ public class ParticipationService {
         Post post = locked(postId);
         Instant now = clock.instant(); // Crucially sampled after acquiring the parent lock.
         visible(post, now);
+        try { return joinLocked(post, actor, actorId, now); }
+        catch (ApiException e) { throw withPublicState(e, post, now); }
+    }
+
+    private Result<MutationView> joinLocked(Post post, User actor, long actorId, Instant now) {
+        long postId = post.getId();
         requireOpen(post, now);
         if (!now.isBefore(post.deadline())) throw timeError(JOIN_TIME_CLOSED, post, now);
         if (post.getAuthor().getId() == actorId) throw new ApiException(SELF_PARTICIPATION_NOT_ALLOWED, now);
@@ -57,6 +64,12 @@ public class ParticipationService {
         Post post = locked(postId);
         Instant now = clock.instant();
         visible(post, now);
+        try { return cancelLocked(post, actorId, now); }
+        catch (ApiException e) { throw withPublicState(e, post, now); }
+    }
+
+    private Result<MutationView> cancelLocked(Post post, long actorId, Instant now) {
+        long postId = post.getId();
         requireActive(post, now);
         if (!now.isBefore(post.deadline())) throw timeError(CANCEL_TIME_CLOSED, post, now);
         if (post.getAuthor().getId() == actorId) throw new ApiException(AUTHOR_CANNOT_CANCEL_PARTICIPATION, now);
@@ -106,28 +119,61 @@ public class ParticipationService {
         }
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id")));
         Page<Participation> result = filter == null ? participations.findByUser_Id(actorId, pageable) : participations.findByUser_IdAndStatus(actorId, filter, pageable);
-        List<HistoryItem> items = result.getContent().stream().map(p -> historyItem(p, now)).toList();
+        Map<Long, Long> joined = new HashMap<>();
+        if (!result.isEmpty()) {
+            for (var c : participations.countJoinedByPosts(result.getContent().stream().map(p -> p.getPost().getId()).toList()))
+                joined.put(c.getPostId(), c.getJoinedCount());
+        }
+        List<HistoryItem> items = result.getContent().stream()
+            .map(p -> historyItem(p, 1 + joined.getOrDefault(p.getPost().getId(), 0L), now)).toList();
         return new Result<>(new HistoryView(items, page, size, result.getTotalElements(), result.getTotalPages()), now);
     }
 
-    private HistoryItem historyItem(Participation p, Instant now) {
+    private HistoryItem historyItem(Participation p, long count, Instant now) {
         Post post = p.getPost(); PostStatus status = post.effectiveStatus(now);
-        HistoryPost dto = status == PostStatus.REMOVED
-            ? new HistoryPost(post.getId().toString(), status, true, null, null, null, "관리자에 의해 삭제된 모집입니다.")
-            : new HistoryPost(post.getId().toString(), status, false, post.getType(), post.getTitle(), seoul(post.getReferenceTime()), null);
+        HistoryPost dto;
+        if (status == PostStatus.REMOVED) {
+            dto = new HistoryPost(post.getId().toString(), status, RecruitmentStatus.REMOVED, true, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, "관리자에 의해 삭제된 모집입니다.");
+        } else {
+            PostContent v = post.contentValues();
+            boolean member = p.getStatus() == ParticipationStatus.JOINED;
+            String link = PostResponse.canViewLink(post, false, member, now) ? v.communicationUrl() : null;
+            dto = new HistoryPost(post.getId().toString(), status, post.recruitmentStatus(now, count), false, post.getType(),
+                post.getTitle(), seoul(post.getReferenceTime()), seoul(post.deadline()), post.getCapacity(), count,
+                Math.max(0, post.getCapacity() - count), v.departure(), v.destination(), v.restaurantName(), v.pickupLocation(),
+                new AuthorView(post.getAuthor().getName()), link, null);
+        }
         return new HistoryItem(p.getId().toString(), p.getStatus(), seoul(p.getCreatedAt()), seoul(p.getUpdatedAt()), seoul(p.getCancelledAt()), dto);
+    }
+    private PostView publicView(Post post, long count, Instant now) {
+        PostStatus status = post.effectiveStatus(now);
+        boolean joinable = status == PostStatus.OPEN && now.isBefore(post.deadline()) && count < post.getCapacity();
+        return new PostView(post.getId().toString(), post.getType(), status, post.recruitmentStatus(now, count),
+            seoul(post.getReferenceTime()), seoul(post.deadline()), post.getCapacity(), count, Math.max(0, post.getCapacity() - count), joinable);
+    }
+    /**
+     * A rejected join/cancel also returns the latest public state of the post
+     * (status, counts, deadline) so the client can say "방금 정원이 찼어요" or
+     * "신청 기한이 지났어요" and redraw without another request. Never includes
+     * names or the communication link.
+     */
+    private ApiException withPublicState(ApiException e, Post post, Instant now) {
+        if (e.code() == POST_NOT_FOUND || e.code() == AUTHENTICATION_REQUIRED) return e;
+        Map<String, Object> details = new LinkedHashMap<>(e.details());
+        details.put("post", publicView(post, currentCount(post.getId()), now));
+        return new ApiException(e.code(), e.evaluatedAt(), details);
     }
     private StateView state(Post post, Participation mine, long actorId, long count, Instant now) {
         PostStatus status = post.effectiveStatus(now);
         boolean before = now.isBefore(post.deadline());
-        boolean joinable = status == PostStatus.OPEN && before && count < post.getCapacity();
         boolean author = post.getAuthor().getId() == actorId;
         String myStatus = mine == null ? "NONE" : mine.getStatus().name();
         boolean joined = mine != null && mine.getStatus() == ParticipationStatus.JOINED;
         boolean active = status == PostStatus.OPEN || status == PostStatus.FULL || status == PostStatus.CLOSED;
         ParticipationView p = mine == null ? null : new ParticipationView(mine.getId().toString(), post.getId().toString(), mine.getStatus(), seoul(mine.getCreatedAt()), seoul(mine.getUpdatedAt()), seoul(mine.getCancelledAt()));
-        PostView summary = new PostView(post.getId().toString(), post.getType(), status, seoul(post.getReferenceTime()), seoul(post.deadline()), post.getCapacity(), count, Math.max(0, post.getCapacity() - count), joinable);
-        return new StateView(p, summary, new Viewer(author, myStatus, joinable && !author && !joined, joined && active && before));
+        PostView summary = publicView(post, count, now);
+        return new StateView(p, summary, new Viewer(author, myStatus, summary.joinable() && !author && !joined, joined && active && before));
     }
     private long currentCount(long postId) { return 1 + participations.countByPost_IdAndStatus(postId, ParticipationStatus.JOINED); }
     private User actor(long id) { return users.findById(id).orElseThrow(() -> new ApiException(AUTHENTICATION_REQUIRED, clock.instant())); }

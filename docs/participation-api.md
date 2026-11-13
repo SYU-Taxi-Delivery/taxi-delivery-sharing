@@ -104,6 +104,14 @@ page는 0 이상, size는 1~50입니다. status는 생략하거나 대문자 JOI
 {"postId":"1","postStatus":"REMOVED","isRemoved":true,"message":"관리자에 의해 삭제된 모집입니다."}
 ```
 
+## 내 참여 내역의 모집 정보
+
+`/api/users/me/participations`의 `post`는 목록·상세와 같은 값(유형, 제목, 기준시각, 참여 마감시각, 정원, 현재 인원, 여석, 출발지·도착지·음식점·수령 장소, 작성자 표시 이름, `recruitmentStatus`)을 준다. `communicationUrl`은 본인이 현재 JOINED이고 일정이 활성(OPEN/FULL/CLOSED)일 때만 준다. 취소한 참여, 모집 취소, 기준시각 이후에는 내려가지 않는다. 관리자 삭제 글은 기존처럼 `isRemoved=true`와 안내 문구만 준다.
+
+## 거절 응답의 최신 공개 상태
+
+참여·참여 취소가 409로 거절되면 `error.details.post`에 그 순간의 공개 상태(`postStatus`, `recruitmentStatus`, `referenceTime`, `participationDeadline`, `capacity`, `currentMemberCount`, `remainingSeats`, `joinable`)를 함께 준다. 화면은 다시 조회하지 않고 "방금 정원이 찼어요"(POST_FULL), "신청 기한이 지났어요"(JOIN_TIME_CLOSED), "작성자가 모집을 마감했어요"(POST_CLOSED)처럼 안내하고 상태를 갱신할 수 있다. 명단과 소통 링크는 들어 있지 않다.
+
 ## 정책과 동시성
 
 - TAXI 정원 2~4, DELIVERY 2~10. 작성자 포함 `1 + JOINED 수`를 계산하며 count 캐시 컬럼은 사용하지 않습니다.
