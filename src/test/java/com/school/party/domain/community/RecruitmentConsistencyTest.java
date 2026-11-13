@@ -67,7 +67,7 @@ class RecruitmentConsistencyTest {
             capacity, at.atOffset(ZoneOffset.ofHours(9)), LINK, null, null, restaurant, pickup, "메뉴를 알려주세요")).data().postId());
     }
     long route() { return taxi(author, 4, TIME, "삼육대학교 후문", "태릉입구역 7번 출구"); }
-    RecruitmentStatus status(long id, User viewer) { return service.get(id, viewer.getId()).data().recruitmentStatus(); }
+    RecruitmentStatus recruitment(long id, User viewer) { return service.get(id, viewer.getId()).data().recruitmentStatus(); }
     String attempt(Runnable action) { try { action.run(); return "OK"; } catch (ApiException e) { return e.code().name(); } }
     void rejects(ErrorCode code, Runnable action) { assertThat(attempt(action)).isEqualTo(code.name()); }
     org.springframework.test.web.servlet.request.RequestPostProcessor as(User user) {
@@ -110,32 +110,32 @@ class RecruitmentConsistencyTest {
     @Test void deadlineBoundaryIsTheSameForStatusAndValidation() {
         long id = route();
         clock.set(DEADLINE.minusSeconds(1));
-        assertThat(status(id, s1)).isEqualTo(RecruitmentStatus.RECRUITING);
+        assertThat(recruitment(id, s1)).isEqualTo(RecruitmentStatus.RECRUITING);
         assertThat(service.get(id, s1.getId()).data().viewer().canJoin()).isTrue();
         clock.set(DEADLINE);
-        assertThat(status(id, s1)).isEqualTo(RecruitmentStatus.APPLICATION_CLOSED);
+        assertThat(recruitment(id, s1)).isEqualTo(RecruitmentStatus.APPLICATION_CLOSED);
         assertThat(service.get(id, s1.getId()).data().viewer().canJoin()).isFalse();
         rejects(JOIN_TIME_CLOSED, () -> participation.join(id, s1.getId()));
         assertThat(service.list(s2.getId(), 0, 20, null, null, PostSearch.parse(null, null, null, null, null, null, null, null, true, null, DEADLINE))
             .data().items()).isEmpty();
         clock.set(DEADLINE.plusSeconds(1));
-        assertThat(status(id, s1)).isEqualTo(RecruitmentStatus.APPLICATION_CLOSED);
+        assertThat(recruitment(id, s1)).isEqualTo(RecruitmentStatus.APPLICATION_CLOSED);
         clock.set(TIME);
-        assertThat(status(id, s1)).isEqualTo(RecruitmentStatus.FINISHED);
+        assertThat(recruitment(id, s1)).isEqualTo(RecruitmentStatus.FINISHED);
     }
 
     @Test void fullReopensWhenASeatFreesBeforeTheDeadline() {
         long id = taxi(author, 2, TIME, "삼육대학교 정문", "석계역 1번 출구");
         participation.join(id, s1.getId());
-        assertThat(status(id, s2)).isEqualTo(RecruitmentStatus.FULL);
+        assertThat(recruitment(id, s2)).isEqualTo(RecruitmentStatus.FULL);
         rejects(POST_FULL, () -> participation.join(id, s2.getId()));
         participation.cancel(id, s1.getId());
-        assertThat(status(id, s2)).isEqualTo(RecruitmentStatus.RECRUITING);
+        assertThat(recruitment(id, s2)).isEqualTo(RecruitmentStatus.RECRUITING);
         participation.join(id, s2.getId());
         assertThat(service.get(id, s2.getId()).data().viewer().myParticipationStatus()).isEqualTo("JOINED");
         // The earlier member's own status stays "CANCELLED" while the post is FULL again.
         assertThat(service.get(id, s1.getId()).data().viewer().myParticipationStatus()).isEqualTo("CANCELLED");
-        assertThat(status(id, s1)).isEqualTo(RecruitmentStatus.FULL);
+        assertThat(recruitment(id, s1)).isEqualTo(RecruitmentStatus.FULL);
     }
 
     @Test void authorCloseKeepsMembersButScheduleCancelEndsThem() {
