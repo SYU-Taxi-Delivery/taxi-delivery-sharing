@@ -57,7 +57,7 @@ Docker가 있으면 `./gradlew.bat mysqlTest`로 MySQL 8.4 계약 테스트를 �
 
 V1과 동일한 기존 스키마임을 확인한 경우에만 담당자가 Flyway CLI에서 version 1로 baseline한 뒤 앱을 실행해 V2를 적용한다. `baseline-on-migrate`를 자동으로 켜거나 공유 DB를 초기화하지 않는다. 이전 taxi-delivery-user-backend의 DB는 별도 이력을 가지므로 이 baseline 절차의 대상이 아니다.
 
-2026-10-15 현재 실제 팀 사용자 DB의 DDL/접속 정보는 미확보다. 신규 DB 검증과 모의 기존 사용자 DB의 baseline/V2 리허설은 수행했으며, 실제 사용자 DB의 구조 대조·복제본 리허설·적용은 자료 확보 후 별도로 확인해야 한다. 모의 JPA 스키마에서는 refresh_token.revoked의 BIT(1)와 V1 BOOLEAN(TINYINT(1)) 차이가 발견됐다. [실제 DB 조사 및 적용 절차](db-migration-existing-users.md)와 [이번 재검증 결과](revalidation/db-migration-2026-10-15.md)를 참고한다.
+2026-11-13 PM 확인 결과, 데이터를 보존해야 하는 기존 팀 사용자 DB는 없다. 따라서 위 baseline 절차는 현재 적용 대상이 없다. 배포용 MySQL 8.4 DB는 2026-11-05 빈 DB에 Flyway V1→V2를 적용해 만들었다(이력 `1:SQL`, `2:SQL`). 신규 DB 검증과 모의 기존 사용자 DB의 baseline/V2 리허설은 2026-10-15에 수행했으며, 기존 사용자 DB가 새로 생기면 그때 구조 대조·복제본 리허설을 진행한다. 모의 JPA 스키마에서는 refresh_token.revoked의 BIT(1)와 V1 BOOLEAN(TINYINT(1)) 차이가 발견됐다. [실제 DB 조사 및 적용 절차](db-migration-existing-users.md)와 [이번 재검증 결과](revalidation/db-migration-2026-10-15.md)를 참고한다.
 
 ## PR 및 브랜치
 
