@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.PostMySqlIT" tests="83" skipped="0" failures="0" errors="0" timestamp="2026-11-13T17:53:39.661Z" hostname="redacted" time="14.363">
+  <testcase name="httpAuthenticationCsrfAndOwnershipAreEnforced()" classname="com.school.party.domain.community.PostMySqlIT" time="0.098" />
+  <testcase name="DUP_differentAuthorMayMoveToAnOccupiedReferenceTime()" classname="com.school.party.domain.community.PostMySqlIT" time="0.052" />
+  <testcase name="simultaneousTimeEditAndCreationHasExactlyOneWinner()" classname="com.school.party.domain.community.PostMySqlIT" time="0.05" />
+  <testcase name="participantCommittedWhileEditWaitsLocksCoreFields()" classname="com.school.party.domain.community.PostMySqlIT" time="0.073" />
+  <testcase name="omittedOptionalFieldRetainedExplicitNullClearsButRequiredNullRejected()" classname="com.school.party.domain.community.PostMySqlIT" time="0.081" />
+  <testcase name="typeAndStateFiltersAndPaginationAgreeWithEffectiveStatus()" classname="com.school.party.domain.community.PostMySqlIT" time="0.131" />
+  <testcase name="authorCanEditCoreWhenNoJoinedMembers()" classname="com.school.party.domain.community.PostMySqlIT" time="0.04" />
+  <testcase name="nonCoreEditsWorkWithParticipantsAndFullState()" classname="com.school.party.domain.community.PostMySqlIT" time="0.053" />
+  <testcase name="otherNonCoreFieldsRemainEditableWithinTenMinutesOfClosedRecruitment()" classname="com.school.party.domain.community.PostMySqlIT" time="0.065" />
+  <testcase name="httpStrictInputRejectsForgedFieldsWrongTypesUnknownEnumsAndDuplicateKeys()" classname="com.school.party.domain.community.PostMySqlIT" time="0.071" />
+  <testcase name="[1] occupiedType = &quot;TAXI&quot;, movingType = &quot;TAXI&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.052" />
+  <testcase name="[2] occupiedType = &quot;TAXI&quot;, movingType = &quot;DELIVERY&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.045" />
+  <testcase name="[3] occupiedType = &quot;DELIVERY&quot;, movingType = &quot;TAXI&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.043" />
+  <testcase name="[4] occupiedType = &quot;DELIVERY&quot;, movingType = &quot;DELIVERY&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.045" />
+  <testcase name="limitsBlankInputsAndHttpsAreValidatedOnServer()" classname="com.school.party.domain.community.PostMySqlIT" time="0.095" />
+  <testcase name="[1] storedStatus = OPEN" classname="com.school.party.domain.community.PostMySqlIT" time="0.043" />
+  <testcase name="[2] storedStatus = FULL" classname="com.school.party.domain.community.PostMySqlIT" time="0.05" />
+  <testcase name="[3] storedStatus = CLOSED" classname="com.school.party.domain.community.PostMySqlIT" time="0.054" />
+  <testcase name="cancelledRemovedAndStoredFinishedAreExcludedFromDuplicates()" classname="com.school.party.domain.community.PostMySqlIT" time="0.077" />
+  <testcase name="updateRejectsExpiryAfterWaitingForPostLock()" classname="com.school.party.domain.community.PostMySqlIT" time="0.054" />
+  <testcase name="detailOnlyDisclosesLinksToOwnerAndCurrentJoinedMembers()" classname="com.school.party.domain.community.PostMySqlIT" time="0.078" />
+  <testcase name="fullAndClosedAreStillValidForDuplicateChecks()" classname="com.school.party.domain.community.PostMySqlIT" time="0.052" />
+  <testcase name="httpCreateReturnsLocationDetailEnvelopeAndOnlyAuthenticatedActor()" classname="com.school.party.domain.community.PostMySqlIT" time="0.07" />
+  <testcase name="deliveryPersistsItsFieldsOnly()" classname="com.school.party.domain.community.PostMySqlIT" time="0.028" />
+  <testcase name="[1] taxiFirst = true" classname="com.school.party.domain.community.PostMySqlIT" time="0.096" />
+  <testcase name="[2] taxiFirst = false" classname="com.school.party.domain.community.PostMySqlIT" time="0.088" />
+  <testcase name="cancelledParticipationDoesNotKeepCoreLocked()" classname="com.school.party.domain.community.PostMySqlIT" time="0.053" />
+  <testcase name="creationUsesRequestAndCountsAuthorWithoutParticipation()" classname="com.school.party.domain.community.PostMySqlIT" time="0.037" />
+  <testcase name="defaultListExcludesClosedCancelledFinishedRemovedAndOrdersByTimeThenId()" classname="com.school.party.domain.community.PostMySqlIT" time="0.143" />
+  <testcase name="sameAuthorCrossTypeConflictAndDifferentAuthorAllowed()" classname="com.school.party.domain.community.PostMySqlIT" time="0.051" />
+  <testcase name="timeEditRechecksDeadlineAndDuplicatesWithoutChangingExistingPost()" classname="com.school.party.domain.community.PostMySqlIT" time="0.079" />
+  <testcase name="sameReferenceInstantWithDifferentOffsetIsNotATimeChange()" classname="com.school.party.domain.community.PostMySqlIT" time="0.048" />
+  <testcase name="deliveryCoreLockedButOrderGuideCanChange()" classname="com.school.party.domain.community.PostMySqlIT" time="0.059" />
+  <testcase name="exactParticipationDeadlineRetainsOpenButJoinableFalse()" classname="com.school.party.domain.community.PostMySqlIT" time="0.051" />
+  <testcase name="httpListHasNoLinkOrPersonalIdentifiers()" classname="com.school.party.domain.community.PostMySqlIT" time="0.047" />
+  <testcase name="listCountsOnlyJoinedAndAuthorOnce()" classname="com.school.party.domain.community.PostMySqlIT" time="0.073" />
+  <testcase name="[1] firstType = TAXI" classname="com.school.party.domain.community.PostMySqlIT" time="0.06" />
+  <testcase name="[2] firstType = DELIVERY" classname="com.school.party.domain.community.PostMySqlIT" time="0.059" />
+  <testcase name="[1] scenario = &quot;contentType&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.03" />
+  <testcase name="[2] scenario = &quot;accept&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.027" />
+  <testcase name="[3] scenario = &quot;malformedJson&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.033" />
+  <testcase name="[4] scenario = &quot;businessWithAccept&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.025" />
+  <testcase name="[5] scenario = &quot;malformedWithAccept&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.024" />
+  <testcase name="DUP_differentAuthorsCanCommitSameTimeWhileFirstAuthorIsLocked()" classname="com.school.party.domain.community.PostMySqlIT" time="0.038" />
+  <testcase name="emptyNonObjectAndWrongTypesRejected()" classname="com.school.party.domain.community.PostMySqlIT" time="0.077" />
+  <testcase name="pastAndNonMinuteTimesAreRejected()" classname="com.school.party.domain.community.PostMySqlIT" time="0.035" />
+  <testcase name="simultaneousFirstCreationHasExactlyOneWinner()" classname="com.school.party.domain.community.PostMySqlIT" time="0.031" />
+  <testcase name="title-only PATCH with 600 seconds until existing reference time succeeds" classname="com.school.party.domain.community.PostMySqlIT" time="0.043" />
+  <testcase name="title-only PATCH with 599 seconds until existing reference time succeeds" classname="com.school.party.domain.community.PostMySqlIT" time="0.051" />
+  <testcase name="title-only PATCH with 1 seconds until existing reference time succeeds" classname="com.school.party.domain.community.PostMySqlIT" time="0.049" />
+  <testcase name="unchangedCoreValuesAreAllowedAndDoNotReapplyCreationDeadline()" classname="com.school.party.domain.community.PostMySqlIT" time="0.05" />
+  <testcase name="[1] action = &quot;create&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.027" />
+  <testcase name="[2] action = &quot;update&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.03" />
+  <testcase name="authorOnlyAndNoChangesAfterCancelFinishOrRemove()" classname="com.school.party.domain.community.PostMySqlIT" time="0.061" />
+  <testcase name="finishedAndCancelledHideLinksEvenForOwnerOrFinalParticipant()" classname="com.school.party.domain.community.PostMySqlIT" time="0.058" />
+  <testcase name="timeIsRecheckedAfterWaitingForAuthorLock()" classname="com.school.party.domain.community.PostMySqlIT" time="0.027" />
+  <testcase name="[1] terminalStatus = CANCELLED" classname="com.school.party.domain.community.PostMySqlIT" time="0.048" />
+  <testcase name="[2] terminalStatus = FINISHED" classname="com.school.party.domain.community.PostMySqlIT" time="0.05" />
+  <testcase name="[3] terminalStatus = REMOVED" classname="com.school.party.domain.community.PostMySqlIT" time="0.048" />
+  <testcase name="exactTenMinutesCannotBeCreatedButNextMinuteCan()" classname="com.school.party.domain.community.PostMySqlIT" time="0.022" />
+  <testcase name="[1] creationFirst = true" classname="com.school.party.domain.community.PostMySqlIT" time="0.064" />
+  <testcase name="[2] creationFirst = false" classname="com.school.party.domain.community.PostMySqlIT" time="0.076" />
+  <testcase name="changed reference time 601 seconds ahead must be strictly beyond ten minutes" classname="com.school.party.domain.community.PostMySqlIT" time="0.044" />
+  <testcase name="changed reference time 600 seconds ahead must be strictly beyond ten minutes" classname="com.school.party.domain.community.PostMySqlIT" time="0.036" />
+  <testcase name="changed reference time 599 seconds ahead must be strictly beyond ten minutes" classname="com.school.party.domain.community.PostMySqlIT" time="0.043" />
+  <testcase name="[1] actor = &quot;author&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.051" />
+  <testcase name="[2] actor = &quot;student&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.05" />
+  <testcase name="[3] actor = &quot;admin&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.046" />
+  <testcase name="illegalPostRecoveryTransitionsAreRejected()" classname="com.school.party.domain.community.PostMySqlIT" time="0.065" />
+  <testcase name="[1] occupiedStatus = FULL" classname="com.school.party.domain.community.PostMySqlIT" time="0.046" />
+  <testcase name="[2] occupiedStatus = CLOSED" classname="com.school.party.domain.community.PostMySqlIT" time="0.044" />
+  <testcase name="REV_HTTP_successAndBusinessErrorMetadataMatchTheirResponseHeaders()" classname="com.school.party.domain.community.PostMySqlIT" time="0.047" />
+  <testcase name="expiredStoredOpenIsExcludedFromConflictQuery()" classname="com.school.party.domain.community.PostMySqlIT" time="0.038" />
+  <testcase name="creationRejectsIncompatibleOuterTransactionBeforeWriting()" classname="com.school.party.domain.community.PostMySqlIT" time="0.028" />
+  <testcase name="httpBadIdMissingPostAndInvalidQueriesUseConsistentErrors()" classname="com.school.party.domain.community.PostMySqlIT" time="0.055" />
+  <testcase name="typeAndServerOwnedFieldsCannotBePatched()" classname="com.school.party.domain.community.PostMySqlIT" time="0.064" />
+  <testcase name="joinedMembersLockAllCoreFieldsAndFailureRollsBack()" classname="com.school.party.domain.community.PostMySqlIT" time="0.058" />
+  <testcase name="closedLocksCoreEvenWithoutParticipantsButAllowsTitle()" classname="com.school.party.domain.community.PostMySqlIT" time="0.043" />
+  <testcase name="invalidFiltersAndMissingDatabaseActorAreRejected()" classname="com.school.party.domain.community.PostMySqlIT" time="0.033" />
+  <testcase name="[1] occupiedType = &quot;TAXI&quot;, requestedType = &quot;TAXI&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.033" />
+  <testcase name="[2] occupiedType = &quot;TAXI&quot;, requestedType = &quot;DELIVERY&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.037" />
+  <testcase name="[3] occupiedType = &quot;DELIVERY&quot;, requestedType = &quot;TAXI&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.036" />
+  <testcase name="[4] occupiedType = &quot;DELIVERY&quot;, requestedType = &quot;DELIVERY&quot;" classname="com.school.party.domain.community.PostMySqlIT" time="0.034" />
+</testsuite>

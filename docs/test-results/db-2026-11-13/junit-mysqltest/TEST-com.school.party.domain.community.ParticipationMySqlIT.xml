@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.ParticipationMySqlIT" tests="85" skipped="0" failures="0" errors="0" timestamp="2026-11-13T17:53:22.643Z" hostname="redacted" time="16.674">
+  <testcase name="[1] readOnly = true" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.147" />
+  <testcase name="[2] readOnly = false" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.049" />
+  <testcase name="HTTP_invalidHistoryQueryIs400()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.131" />
+  <testcase name="NFR_TXN_constraintFailureRollsBackParticipationAndFullTransition()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.144" />
+  <testcase name="JOIN004_authorCannotJoinOrCancelParticipation()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.071" />
+  <testcase name="AUTH004_normalAdminDoesNotBypassMemberListPermission()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.058" />
+  <testcase name="[1] rejoinAfterCancel = true" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.159" />
+  <testcase name="[2] rejoinAfterCancel = false" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.141" />
+  <testcase name="TXN_waitingJoinSeesCommittedFullStateAtLastSeat()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.104" />
+  <testcase name="HTTP_untrustedIdentityHeaderIsIgnored()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.128" />
+  <testcase name="DISC004_ownerCanSeeEmptyListButNonParticipantCannotSeeNames()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.084" />
+  <testcase name="POST006_joinRacingRecruitmentCancelLeavesNoJoinedMembers()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.073" />
+  <testcase name="HTTP_noneParticipationReturns200AndNullRecord()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.081" />
+  <testcase name="JOIN003_differentRecruitmentsAreAllowed()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.104" />
+  <testcase name="[1] remainingSeconds = 601" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.097" />
+  <testcase name="[2] remainingSeconds = 600" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.078" />
+  <testcase name="[3] remainingSeconds = 599" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.082" />
+  <testcase name="JOIN003_concurrentDuplicateHasOneLogicalParticipation()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.066" />
+  <testcase name="JOIN006_nonParticipantCannotCancel()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.047" />
+  <testcase name="JOIN007_lastSeatTransitionsToFull()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.062" />
+  <testcase name="ADMIN003_removalCancelsActiveMembersAndReturnsOnlyTombstone()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.092" />
+  <testcase name="JOIN005_oneSecondBeforeDeadlineAllowsJoin()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.047" />
+  <testcase name="[1] action = &quot;join&quot;" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.054" />
+  <testcase name="[2] action = &quot;cancel&quot;" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.066" />
+  <testcase name="JOIN006_repeatedCancelPreservesTimestampAndCount()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.078" />
+  <testcase name="HTTP_bodyUserIdCannotImpersonateAnyone()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.043" />
+  <testcase name="missingPostIsNotFound()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.042" />
+  <testcase name="ADMIN003_joinRacingRemovalLeavesNoJoinedMembers()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.051" />
+  <testcase name="POST005_fullCanBeManuallyClosed()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.077" />
+  <testcase name="POST008_expiredStoredOpenIsFinishedWithoutChangingJoinedHistory()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.091" />
+  <testcase name="JOIN006_oneSecondBeforeDeadlineAllowsCancel()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.069" />
+  <testcase name="POST006_recruitmentCancellationCancelsEveryActiveMember()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.103" />
+  <testcase name="TXN_adminRemovalRechecksExpiryAndPreservesFinishedHistoryAfterWaiting()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.098" />
+  <testcase name="JOIN008_cancelFromFullAutomaticallyReopens()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.066" />
+  <testcase name="[1] action = &quot;close&quot;" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.084" />
+  <testcase name="[2] action = &quot;cancelRecruitment&quot;" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.081" />
+  <testcase name="HTTP_memberPermissionDeniedDoesNotContainNames()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.048" />
+  <testcase name="JOIN001_initialJoinCountsAuthorExactlyOnce()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.061" />
+  <testcase name="TXN_participantCancelRechecksDeadlineAfterWaiting()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.098" />
+  <testcase name="TXN_databaseForeignKeyAndStateCheckRejectInvalidDirectWrites()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.079" />
+  <testcase name="[1] joinFirst = true" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.12" />
+  <testcase name="[2] joinFirst = false" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.104" />
+  <testcase name="AUTH004_missingDatabaseUserCannotAct()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.037" />
+  <testcase name="JOIN006_cancelFromClosedPreservesClosed()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.064" />
+  <testcase name="DISC004_cancelledParticipantLosesListPermissionImmediately()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.092" />
+  <testcase name="MY002_historyNeverMixesOtherUsersAndFiltersCurrentStatus()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.11" />
+  <testcase name="JOIN005_waitingForPostLockRechecksDeadlineAfterLock()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.193" />
+  <testcase name="HTTP_genericUsernamePrincipalCannotPretendToBeDatabaseId()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.035" />
+  <testcase name="HTTP_cancelAndRejoinAre200AndRejoinKeepsId()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.075" />
+  <testcase name="[1] action = &quot;join&quot;" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.064" />
+  <testcase name="[2] action = &quot;cancel&quot;" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.077" />
+  <testcase name="[3] action = &quot;cancelRecruitment&quot;" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.103" />
+  <testcase name="[4] action = &quot;remove&quot;" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.072" />
+  <testcase name="JOIN002_concurrentLastSeatNeverExceedsCapacity()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.098" />
+  <testcase name="HTTP_unauthenticatedReadIs401()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.032" />
+  <testcase name="AUTH004_nonAdminCannotRemoveAndOtherUserCannotCloseRecruitment()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.032" />
+  <testcase name="REV_TXN_concurrentCancelsHaveOneSuccessAndDoNotSubtractTwice()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.073" />
+  <testcase name="REV_HTTP_joinCancelRejoinMatchesDatabaseAndFilteredHistory()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.148" />
+  <testcase name="HTTP_timeErrorContainsDeadlineAndNoStateMutation()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.039" />
+  <testcase name="[1] action = &quot;cancelRecruitment&quot;" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.071" />
+  <testcase name="[2] action = &quot;remove&quot;" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.076" />
+  <testcase name="[1] action = &quot;join&quot;" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.048" />
+  <testcase name="[2] action = &quot;cancel&quot;" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.048" />
+  <testcase name="[3] action = &quot;mine&quot;" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.039" />
+  <testcase name="[4] action = &quot;members&quot;" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.043" />
+  <testcase name="REV_TXN_waitingJoinCanTakeTheSeatFreedByCommittedCancel()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.115" />
+  <testcase name="JOIN005_exactDeadlineRejectsNewJoin()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.052" />
+  <testcase name="TXN_waitingJoinRecountsMembersWhenStatusRemainsOpen()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.087" />
+  <testcase name="HTTP_unsupportedMethodIs405WithAllowHeader()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.035" />
+  <testcase name="TXN_databaseUniqueConstraintRejectsDuplicateParticipationOutsideService()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.043" />
+  <testcase name="JOIN006_exactDeadlineRejectsCancelWithoutMutation()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.047" />
+  <testcase name="JOIN003_rejoinReusesRecordAndOriginalCreatedAt()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.073" />
+  <testcase name="HTTP_missingCsrfCannotMutate()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.035" />
+  <testcase name="HTTP_invalidIdsReturn400Not500()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.039" />
+  <testcase name="TXN_waitingParticipantCancelPreservesCommittedClosedStatus()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.095" />
+  <testcase name="HTTP_historyTombstoneOmitsOriginalContent()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.067" />
+  <testcase name="ADMIN003_removalOfFinishedPostPreservesJoinedHistory()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.059" />
+  <testcase name="JOIN003_duplicateJoinDoesNotChangeCount()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.055" />
+  <testcase name="HTTP_unknownApiPathIs404()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.043" />
+  <testcase name="DELIVERY_capacityTenIncludesAuthorAndPreventsEleventhMember()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.175" />
+  <testcase name="TXN_failedRejoinRestoresCancelledRecordAndOpenPost()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.102" />
+  <testcase name="[1] joinFirst = true" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.104" />
+  <testcase name="[2] joinFirst = false" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.095" />
+  <testcase name="HTTP_initialJoinIs201WithLocationAndNoSensitiveFields()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.045" />
+  <testcase name="REV_TXN_concurrentRejoinsReactivateOneExistingRecordOnly()" classname="com.school.party.domain.community.ParticipationMySqlIT" time="0.075" />
+</testsuite>
