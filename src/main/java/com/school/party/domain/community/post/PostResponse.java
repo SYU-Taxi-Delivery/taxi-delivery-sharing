@@ -63,7 +63,8 @@ public final class PostResponse {
         return active(post.effectiveStatus(now)) && (author || joined);
     }
     private static boolean active(PostStatus s) { return s == PostStatus.OPEN || s == PostStatus.FULL || s == PostStatus.CLOSED; }
-    private static boolean joinable(Post p, long count, Instant now) {
+    /** One rule for list, detail, my activity and participation responses. */
+    public static boolean joinable(Post p, long count, Instant now) {
         return p.effectiveStatus(now) == PostStatus.OPEN && now.isBefore(p.deadline()) && count < p.getCapacity();
     }
 }

@@ -106,7 +106,7 @@ page는 0 이상, size는 1~50입니다. status는 생략하거나 대문자 JOI
 
 ## 내 참여 내역의 모집 정보
 
-`/api/users/me/participations`의 `post`는 목록·상세와 같은 값(유형, 제목, 기준시각, 참여 마감시각, 정원, 현재 인원, 여석, 출발지·도착지·음식점·수령 장소, 작성자 표시 이름, `recruitmentStatus`)을 준다. `communicationUrl`은 본인이 현재 JOINED이고 일정이 활성(OPEN/FULL/CLOSED)일 때만 준다. 취소한 참여, 모집 취소, 기준시각 이후에는 내려가지 않는다. 관리자 삭제 글은 기존처럼 `isRemoved=true`와 안내 문구만 준다.
+`/api/users/me/participations`의 `post`는 목록·상세와 같은 값(유형, 제목, 기준시각, 참여 마감시각, 정원, 현재 인원, 여석, `joinable`, 출발지·도착지·음식점·수령 장소, 작성자 표시 이름, `recruitmentStatus`)을 준다. `joinable`은 목록·상세와 같은 규칙(OPEN, 참여 마감 전, 여석 있음)으로 계산하며 관리자 삭제 글에서는 내려가지 않는다(2026-11-15 추가). `communicationUrl`은 본인이 현재 JOINED이고 일정이 활성(OPEN/FULL/CLOSED)일 때만 준다. 취소한 참여, 모집 취소, 기준시각 이후에는 내려가지 않는다. 관리자 삭제 글은 기존처럼 `isRemoved=true`와 안내 문구만 준다.
 
 ## 거절 응답의 최신 공개 상태
 
