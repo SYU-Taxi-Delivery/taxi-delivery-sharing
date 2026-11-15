@@ -13,7 +13,7 @@ Windows는 `gradlew.bat`, Linux/macOS는 `./gradlew`를 사용한다.
 java -jar build/libs/taxi-delivery-sharing-0.0.1-SNAPSHOT.jar --spring.profiles.active=demo
 ```
 
-demo는 일회성 H2 DB를 사용하며 학교 인증 대신 author, student1, student2, student3, admin 계정과 `demo-pass` 비밀번호를 제공한다. 이 프로필은 개발 확인용이다.
+demo는 일회성 H2 DB를 사용하며 학교 인증 대신 author, student1, student2, student3, admin 계정과 `demo-pass` 비밀번호를 제공한다. 이 프로필은 개발 확인용이다. 각 계정은 HTTP Basic과 함께 실제 세션 로그인(`POST /api/auth/local/login`)도 쓸 수 있다. identifier는 학번 `demo-{이름}` 또는 학교 이메일 `demo-{이름}@syuin.ac.kr`이며, 프론트엔드 로그인 화면에서 이메일로 로그인해 FE·BE 통합 점검을 할 수 있다.
 
 ```powershell
 ./scripts/smoke-post-demo.ps1

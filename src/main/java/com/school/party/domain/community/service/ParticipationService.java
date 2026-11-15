@@ -134,23 +134,23 @@ public class ParticipationService {
         HistoryPost dto;
         if (status == PostStatus.REMOVED) {
             dto = new HistoryPost(post.getId().toString(), status, RecruitmentStatus.REMOVED, true, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, "관리자에 의해 삭제된 모집입니다.");
+                null, null, null, null, null, null, null, null, null, null, "관리자에 의해 삭제된 모집입니다.");
         } else {
             PostContent v = post.contentValues();
             boolean member = p.getStatus() == ParticipationStatus.JOINED;
             String link = PostResponse.canViewLink(post, false, member, now) ? v.communicationUrl() : null;
             dto = new HistoryPost(post.getId().toString(), status, post.recruitmentStatus(now, count), false, post.getType(),
                 post.getTitle(), seoul(post.getReferenceTime()), seoul(post.deadline()), post.getCapacity(), count,
-                Math.max(0, post.getCapacity() - count), v.departure(), v.destination(), v.restaurantName(), v.pickupLocation(),
+                Math.max(0, post.getCapacity() - count), PostResponse.joinable(post, count, now), v.departure(), v.destination(), v.restaurantName(), v.pickupLocation(),
                 new AuthorView(post.getAuthor().getName()), link, null);
         }
         return new HistoryItem(p.getId().toString(), p.getStatus(), seoul(p.getCreatedAt()), seoul(p.getUpdatedAt()), seoul(p.getCancelledAt()), dto);
     }
     private PostView publicView(Post post, long count, Instant now) {
         PostStatus status = post.effectiveStatus(now);
-        boolean joinable = status == PostStatus.OPEN && now.isBefore(post.deadline()) && count < post.getCapacity();
         return new PostView(post.getId().toString(), post.getType(), status, post.recruitmentStatus(now, count),
-            seoul(post.getReferenceTime()), seoul(post.deadline()), post.getCapacity(), count, Math.max(0, post.getCapacity() - count), joinable);
+            seoul(post.getReferenceTime()), seoul(post.deadline()), post.getCapacity(), count, Math.max(0, post.getCapacity() - count),
+            PostResponse.joinable(post, count, now));
     }
     /**
      * A rejected join/cancel also returns the latest public state of the post

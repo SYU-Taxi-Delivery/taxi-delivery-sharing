@@ -47,6 +47,27 @@ class DemoBasicSecurityHttpTest {
         }
     }
 
+    @Test void demoAccountsAlsoSignInWithTheSessionLogin() throws Exception {
+        try (var browser = new SecurityHttpClient(port, mapper)) {
+            var login = browser.send("POST", "/api/auth/local/login",
+                "{\"identifier\":\"demo-student2\",\"password\":\"demo-pass\"}", browser.csrf());
+            assertThat(login.statusCode()).isEqualTo(200);
+            assertThat(mapper.readTree(login.body()).get("name").asText()).isEqualTo("student2");
+            assertThat(browser.send("GET", "/api/users/me/participations", null, null).statusCode()).isEqualTo(200);
+        }
+        try (var browser = new SecurityHttpClient(port, mapper)) {
+            var byEmail = browser.send("POST", "/api/auth/local/login",
+                "{\"identifier\":\"demo-author@syuin.ac.kr\",\"password\":\"demo-pass\"}", browser.csrf());
+            assertThat(byEmail.statusCode()).isEqualTo(200);
+            assertThat(mapper.readTree(byEmail.body()).get("name").asText()).isEqualTo("author");
+        }
+        try (var browser = new SecurityHttpClient(port, mapper)) {
+            var wrong = browser.send("POST", "/api/auth/local/login",
+                "{\"identifier\":\"demo-student3\",\"password\":\"wrong-pass\"}", browser.csrf());
+            browser.error(wrong, 401, "AUTHENTICATION_REQUIRED");
+        }
+    }
+
     private String basic(String password) {
         return "Basic " + Base64.getEncoder().encodeToString(("student1:" + password).getBytes(StandardCharsets.UTF_8));
     }

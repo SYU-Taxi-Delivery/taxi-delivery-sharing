@@ -25,11 +25,12 @@ public final class ApiModels {
     /**
      * The post as the member sees it in "my activity": the same schedule, places,
      * author and counts as list and detail. communicationUrl only while the viewer
-     * is a current member of an active schedule.
+     * is a current member of an active schedule. joinable follows the same rule as
+     * list and detail (null for a removed post).
      */
     public record HistoryPost(String postId, PostStatus postStatus, RecruitmentStatus recruitmentStatus, boolean isRemoved,
         PostType type, String title, OffsetDateTime referenceTime, OffsetDateTime participationDeadline,
-        Integer capacity, Long currentMemberCount, Long remainingSeats, String departure, String destination,
+        Integer capacity, Long currentMemberCount, Long remainingSeats, Boolean joinable, String departure, String destination,
         String restaurantName, String pickupLocation, AuthorView author, String communicationUrl, String message) {}
     public record HistoryItem(String participationId, ParticipationStatus participationStatus, OffsetDateTime createdAt, OffsetDateTime updatedAt, OffsetDateTime cancelledAt, HistoryPost post) {}
     public record HistoryView(List<HistoryItem> items, int page, int size, long totalElements, int totalPages) {}

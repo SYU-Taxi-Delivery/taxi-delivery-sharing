@@ -119,6 +119,12 @@ class FrontendContractHttpTest {
             assertThat(participations.countByPost_IdAndStatus(Long.parseLong(id), ParticipationStatus.JOINED)).isEqualTo(2);
             var history = data(member.send("GET", "/api/users/me/participations?status=JOINED&page=0&size=50", null, null), 200);
             assertThat(history.path("items").get(0).path("participationId").asText()).isEqualTo(participationId);
+            // My activity reports joinable by the same rule as the list and detail.
+            var item = history.path("items").get(0).path("post");
+            var everyPost = data(member.send("GET", "/api/posts?status=ALL&page=0&size=50", null, null), 200).path("items");
+            for (var row : everyPost) if (row.path("postId").asText().equals(item.path("postId").asText()))
+                assertThat(item.path("joinable").isBoolean() && item.path("joinable").asBoolean() == row.path("joinable").asBoolean()).isTrue();
+            assertThat(item.has("joinable")).isTrue();
         }
     }
 
