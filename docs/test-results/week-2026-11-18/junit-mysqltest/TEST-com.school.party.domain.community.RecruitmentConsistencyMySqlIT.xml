@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-11-18T13:45:26.115Z" hostname="redacted" time="8.851">
+  <testcase name="authorCloseKeepsMembersButScheduleCancelEndsThem()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.09" />
+  <testcase name="sameRecordAcrossListDetailHistoryAndMyPosts()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.066" />
+  <testcase name="memberCancelRacingAuthorCloseNeverCountsTwice()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.057" />
+  <testcase name="fullReopensWhenASeatFreesBeforeTheDeadline()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.078" />
+  <testcase name="rejectedJoinReturnsTheLatestPublicStateWithoutPrivateData()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.054" />
+  <testcase name="linkAndMembersStayPrivate()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.107" />
+  <testcase name="joinRacingAuthorCloseEndsInOneConsistentState()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.036" />
+  <testcase name="repeatedJoinTapsCountOnce()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.038" />
+  <testcase name="authorLifecycleAndMyPostsOverHttp()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.084" />
+  <testcase name="searchMatchesPlaceSpellingVariantsDirectionTimeAndSort()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.111" />
+  <testcase name="deadlineBoundaryIsTheSameForStatusAndValidation()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.063" />
+</testsuite>

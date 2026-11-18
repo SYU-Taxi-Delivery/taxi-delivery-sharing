@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.IntegrityAccessMySqlIT" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-11-18T13:44:50.670Z" hostname="redacted" time="10.505">
+  <testcase name="ACC01_onlyTheAuthorCanCloseOrCancelAndRejectedCallsChangeNothing()" classname="com.school.party.domain.community.IntegrityAccessMySqlIT" time="0.394" />
+  <testcase name="ACC02_memberListAndLinkAreVisibleOnlyToAuthorAndCurrentMembers()" classname="com.school.party.domain.community.IntegrityAccessMySqlIT" time="0.568" />
+  <testcase name="INT02_rapidAlternatingRequestsBySameUserLeaveOneConsistentRecord()" classname="com.school.party.domain.community.IntegrityAccessMySqlIT" time="0.221" />
+  <testcase name="INT03_listDetailAndMyViewsMatchStoredRowsAfterRaces()" classname="com.school.party.domain.community.IntegrityAccessMySqlIT" time="0.307" />
+  <testcase name="ACC04_suspendedOrWithdrawnSessionIsRejectedOnEveryNewEndpoint()" classname="com.school.party.domain.community.IntegrityAccessMySqlIT" time="0.141" />
+  <testcase name="INT01_mixedConcurrentJoinCancelCloseKeepsEveryStoredRule()" classname="com.school.party.domain.community.IntegrityAccessMySqlIT" time="0.323" />
+  <testcase name="INT00_integrityCheckerReportsDeliberatelyBrokenRows()" classname="com.school.party.domain.community.IntegrityAccessMySqlIT" time="0.071" />
+  <testcase name="INT04_searchTreatsWildcardCharactersAsPlainText()" classname="com.school.party.domain.community.IntegrityAccessMySqlIT" time="0.123" />
+  <testcase name="ACC03_myEndpointsNeverReturnOtherUsersData()" classname="com.school.party.domain.community.IntegrityAccessMySqlIT" time="0.091" />
+</testsuite>

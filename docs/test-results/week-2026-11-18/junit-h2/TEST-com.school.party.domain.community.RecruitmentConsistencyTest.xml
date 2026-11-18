@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.RecruitmentConsistencyTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-11-18T13:44:06.756Z" hostname="redacted" time="0.25">
+  <testcase name="authorCloseKeepsMembersButScheduleCancelEndsThem()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.017" />
+  <testcase name="sameRecordAcrossListDetailHistoryAndMyPosts()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.023" />
+  <testcase name="memberCancelRacingAuthorCloseNeverCountsTwice()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.016" />
+  <testcase name="fullReopensWhenASeatFreesBeforeTheDeadline()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.016" />
+  <testcase name="rejectedJoinReturnsTheLatestPublicStateWithoutPrivateData()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.015" />
+  <testcase name="linkAndMembersStayPrivate()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.034" />
+  <testcase name="joinRacingAuthorCloseEndsInOneConsistentState()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.011" />
+  <testcase name="repeatedJoinTapsCountOnce()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.012" />
+  <testcase name="authorLifecycleAndMyPostsOverHttp()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.033" />
+  <testcase name="searchMatchesPlaceSpellingVariantsDirectionTimeAndSort()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.045" />
+  <testcase name="deadlineBoundaryIsTheSameForStatusAndValidation()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.015" />
+</testsuite>
