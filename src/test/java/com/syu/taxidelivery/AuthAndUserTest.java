@@ -52,11 +52,14 @@ class AuthAndUserTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-11-09T03:00:00Z"), ZoneOffset.UTC);
         schoolEmailAuthService = new SchoolEmailAuthService(userRepository, userAuthRepository, localCredentialRepository,
-                mailSender, passwordEncoder, new SchoolEmailPolicy("syuin.ac.kr,syu.ac.kr"), new EmailVerificationStore(clock));
+                mailSender, passwordEncoder, new SchoolEmailPolicy("syuin.ac.kr,syu.ac.kr"), new EmailVerificationStore(clock), transactionManager);
     }
 
     private static void rejects(AuthErrorCode code, org.assertj.core.api.ThrowableAssert.ThrowingCallable action) {

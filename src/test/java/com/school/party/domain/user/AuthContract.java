@@ -399,6 +399,18 @@ public abstract class AuthContract {
         else assertThat(results).contains("OK");
     }
 
+    @Test void LOGIN06_inactiveAccountWithCorrectPasswordChangesNothing() throws Exception {
+        // #37: a suspended account must not get its failure counter reset or a login time recorded.
+        User user = account("20240023", Role.STUDENT, UserStatus.ACTIVE);
+        for (int i = 0; i < 2; i++) login("20240023", "wrong-password").andExpect(status().isUnauthorized());
+        jdbc.update("update users set status = 'SUSPENDED' where id = ?", user.getId());
+        login("20240023", PASSWORD).andExpect(status().isUnauthorized());
+        login("20240023", "wrong-password").andExpect(status().isUnauthorized());
+        assertThat(credential(user).getFailedLoginCount()).isEqualTo(2);
+        assertThat(credential(user).getLockedUntil()).isNull();
+        assertThat(users.findById(user.getId()).orElseThrow().getLastLoginAt()).isNull();
+    }
+
     protected String serviceLogin(String identifier, String password) {
         try {
             LocalLoginRequest request = mapper.readValue(mapper.writeValueAsString(
@@ -471,6 +483,24 @@ public abstract class AuthContract {
     }
 
     // ------------------------------------------------------------------- roles
+    @Test void RESET05_failedSaveKeepsTheCodeForRetry() throws Exception {
+        // #36: when saving the new password fails, the same code must still work.
+        User user = account("20240034", Role.STUDENT, UserStatus.ACTIVE);
+        postJson("/api/auth/password-reset/send-code", Map.of("schoolEmail", "20240034@syuin.ac.kr")).andExpect(status().isOk());
+        String code = lastCode("20240034@syuin.ac.kr");
+        doThrow(new org.springframework.dao.TransientDataAccessResourceException("simulated outage"))
+            .when(credentialSpy).findByUserIdForUpdate(any());
+        postJson("/api/auth/password-reset/confirm", Map.of("schoolEmail", "20240034@syuin.ac.kr", "code", code,
+            "newPassword", "Brand-new-pass2")).andExpect(status().isServiceUnavailable());
+        reset(credentialSpy);
+        login("20240034", PASSWORD).andExpect(status().isOk());
+        postJson("/api/auth/password-reset/confirm", Map.of("schoolEmail", "20240034@syuin.ac.kr", "code", code,
+            "newPassword", "Brand-new-pass2")).andExpect(status().isOk());
+        login("20240034", "Brand-new-pass2").andExpect(status().isOk());
+        assertThat(credential(user).getPasswordUpdatedAt())
+            .isEqualTo(java.time.LocalDateTime.ofInstant(clock.instant(), java.time.ZoneOffset.UTC));
+    }
+
     @Test void ROLE01_studentAndAdminReachOnlyTheirFunctions() throws Exception {
         User student = account("20240040", Role.STUDENT, UserStatus.ACTIVE);
         User admin = account("20240041", Role.ADMIN, UserStatus.ACTIVE);

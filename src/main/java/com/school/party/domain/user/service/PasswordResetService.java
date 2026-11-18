@@ -9,6 +9,7 @@ import com.school.party.domain.user.repository.LocalCredentialRepository;
 import com.school.party.domain.user.repository.UserRepository;
 import com.school.party.domain.user.service.EmailVerificationStore.Purpose;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
@@ -18,7 +19,8 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Password reset by school e-mail code. The request step answers identically whether or not the
@@ -35,6 +37,7 @@ public class PasswordResetService {
     private final SchoolEmailPolicy emailPolicy;
     private final EmailVerificationStore verificationStore;
     private final Clock clock;
+    private final PlatformTransactionManager transactionManager;
 
     public void sendResetCode(String rawEmail) {
         String email = emailPolicy.normalize(rawEmail);
@@ -60,16 +63,29 @@ public class PasswordResetService {
         }
     }
 
-    @Transactional
+    /**
+     * 인증번호를 확인한 뒤 비밀번호를 바꾼다. DB 저장이 커밋되지 못하면 확인에 쓴 인증번호를 되살려
+     * 같은 번호로 다시 시도할 수 있게 한다 (#36). bcrypt는 트랜잭션 밖에서 계산한다 (#33).
+     */
     public void resetPassword(String rawEmail, String code, String newPassword) {
         String email = emailPolicy.normalize(rawEmail);
         PasswordPolicy.validate(newPassword);
+        Instant issuedAt = verificationStore.issuedAt(Purpose.PASSWORD_RESET, email);
         verificationStore.verify(Purpose.PASSWORD_RESET, email, code);
-        User user = users.findBySchoolEmail(email)
-            .filter(u -> u.getStatus() == UserStatus.ACTIVE)
-            .orElseThrow(() -> new AuthException(AuthErrorCode.VERIFICATION_CODE_EXPIRED));
-        LocalCredential credential = credentials.findByUserIdForUpdate(user.getId())
-            .orElseThrow(() -> new AuthException(AuthErrorCode.VERIFICATION_CODE_EXPIRED));
-        credential.changePassword(passwordEncoder.encode(newPassword), LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC));
+        boolean committed = false;
+        try {
+            String passwordHash = passwordEncoder.encode(newPassword);
+            new TransactionTemplate(transactionManager).executeWithoutResult(tx -> {
+                User user = users.findBySchoolEmail(email)
+                    .filter(u -> u.getStatus() == UserStatus.ACTIVE)
+                    .orElseThrow(() -> new AuthException(AuthErrorCode.VERIFICATION_CODE_EXPIRED));
+                LocalCredential credential = credentials.findByUserIdForUpdate(user.getId())
+                    .orElseThrow(() -> new AuthException(AuthErrorCode.VERIFICATION_CODE_EXPIRED));
+                credential.changePassword(passwordHash, LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC));
+            });
+            committed = true;
+        } finally {
+            if (!committed && issuedAt != null) verificationStore.restoreCode(Purpose.PASSWORD_RESET, email, code, issuedAt);
+        }
     }
 }

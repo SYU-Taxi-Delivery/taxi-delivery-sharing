@@ -23,7 +23,8 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -38,6 +39,7 @@ public class SchoolEmailAuthService {
     private final PasswordEncoder passwordEncoder;
     private final SchoolEmailPolicy emailPolicy;
     private final EmailVerificationStore verificationStore;
+    private final PlatformTransactionManager transactionManager;
 
     /**
      * [1단계: 학교 이메일로 6자리 인증코드 발송]
@@ -77,11 +79,18 @@ public class SchoolEmailAuthService {
      * 모두 롤백되고, 소비한 인증 상태를 되돌려 다시 시도할 수 있다. 같은 인증으로 동시에 요청하면
      * 한 요청만 인증 상태를 가져간다.
      */
-    @Transactional
     public User registerWithSchoolEmail(SchoolRegisterRequest request) {
         String email = emailPolicy.normalize(request.getSchoolEmail());
         String studentNo = request.getStudentNo().trim();
         PasswordPolicy.validate(request.getPassword());
+        // 인증하지 않은 요청은 bcrypt 계산 전에 거절한다. (최종 판정은 아래에서 인증 상태를 가져갈 때 한다)
+        if (!verificationStore.isVerified(Purpose.SIGN_UP, email)) throw new AuthException(AuthErrorCode.EMAIL_NOT_VERIFIED);
+        // bcrypt는 DB 트랜잭션 밖에서 계산해, 계산하는 동안 DB 연결을 잡지 않는다 (#33).
+        String passwordHash = passwordEncoder.encode(request.getPassword());
+        return new TransactionTemplate(transactionManager).execute(tx -> register(email, studentNo, request, passwordHash));
+    }
+
+    private User register(String email, String studentNo, SchoolRegisterRequest request, String passwordHash) {
 
         Instant verifiedUntil = verificationStore.consumeVerified(Purpose.SIGN_UP, email)
             .orElseThrow(() -> new AuthException(AuthErrorCode.EMAIL_NOT_VERIFIED));
@@ -113,7 +122,7 @@ public class SchoolEmailAuthService {
 
         LocalCredential credential = LocalCredential.builder()
                 .user(user)
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .passwordHash(passwordHash)
                 .failedLoginCount(0)
                 .build();
         localCredentialRepository.save(credential);
