@@ -4,6 +4,8 @@
 
 계약 정정일: 2026-11-12. PR #18·#19가 반영된 main `f45d831`의 현재 가입 DTO와 도메인 정책을 확인했다. 아래 가입 계약은 이 최신 백엔드 기준이며, 11월 11일의 고정 프론트 소스 검증 이력과 구분한다.
 
+모집글·참여 계약 재검증 (2026-11-18, #28). 프론트 `2fbbc22412400f2082c3dbfd8f648ef7f65de9d9`에서 검색, 내 참여·내 작성 글의 모집 상태/인원, 정원·작성자 마감 409 응답을 다시 확인했다.
+
 ## 경로와 응답
 
 모집글·참여 API는 `{data, meta: {evaluatedAt, requestId}}` JSON을 반환한다. 실패는 `{error: {code, message, details?}, meta}`이며 성공 data가 없다. ID는 문자열, 인원은 숫자, 가능 여부는 boolean, 시각은 offset을 포함한 ISO 8601이다. `referenceTime`은 분 단위, 응답 시각은 +09:00이며 DB에는 UTC로 저장한다.
@@ -14,6 +16,9 @@
 | 상세 | GET /api/posts/{id} | 200, data는 상세 객체 |
 | 작성 | POST /api/posts | 201, Location과 data.postId |
 | 수정 | PATCH /api/posts/{id} | 200, data는 갱신한 상세 객체 |
+| 작성자 마감 | POST /api/posts/{id}/close, body 없음 | 200, data는 갱신한 상세 객체 |
+| 일정 취소 | POST /api/posts/{id}/cancel, body 없음 | 200, data는 갱신한 상세 객체 |
+| 내 작성 글 | GET /api/users/me/posts?page=0&size=50 | 200, 데이터는 목록과 같은 페이지 구조 |
 | 최초 참여 | POST /api/posts/{id}/participants, body 없음 | 201, action=INITIAL_JOIN |
 | 재참여 | 같은 POST, body 없음 | 200, action=REJOIN, 기존 participationId 유지 |
 | 참여 취소 | DELETE /api/posts/{id}/participants, body 없음 | 200, action=CANCEL |
@@ -22,6 +27,8 @@
 | 참여 내역 | GET /api/users/me/participations?page=0&size=50 | 200, items[].participationStatus 및 post 요약 |
 
 명단은 작성자 또는 현재 JOINED만 조회할 수 있다. 참여 취소 후에는 403이다. 소통 링크는 유효 모집의 작성자/JOINED에게만 제공한다. 작성자는 PARTICIPATION에 저장하지 않으며 currentMemberCount는 1 + JOINED 수다.
+
+참여·취소·재참여 성공 응답의 `data.post`에 변경 후 `recruitmentStatus`, 정원, 현재 인원, 여석, `joinable`이 들어 있다. 목록·상세·내 활동은 같은 모집의 공개 상태를 받으며, 사용자별 참여 상태는 별도로 표현한다.
 
 ## 화면 모델과 DTO 매핑
 
@@ -76,7 +83,7 @@ BACKEND_ORIGIN=http://localhost:8080
 | 타인 수정/작성자 직접 참여 | 403 FORBIDDEN_OPERATION / SELF_PARTICIPATION_NOT_ALLOWED | 권한 안내 |
 | CSRF 누락/위조 | 403 CSRF_INVALID | 토큰 갱신, 안전한 1회 재시도 |
 | 없는 모집/잘못된 ID | 404 POST_NOT_FOUND / 400 INVALID_POST_ID | 없는 모집 안내 |
-| 중복/정원/마감/취소 시각 | 409 해당 error.code | 최신 상세/참여 상태 재조회 |
+| 중복/정원/마감/취소 시각 | 409 해당 error.code 및 error.details.post | 정원·마감 등 공개 상태의 변경은 응답에서 바로 반영. 중복 신청·취소처럼 본인 상태가 필요한 경우 다시 조회 |
 | 잘못된 입력 | 400 INVALID_REQUEST / INVALID_POST_FIELD | 입력 또는 details.field에 대응하는 필드 안내 |
 | 응답 형식 거절 | 406 NOT_ACCEPTABLE | application/json을 허용하는지 확인. 이 경우 컨트롤러 실행 전 거절 |
 
@@ -84,20 +91,20 @@ BACKEND_ORIGIN=http://localhost:8080
 
 ## 실제 어댑터 검증 재현
 
-기본 Gradle test는 외부 프론트 소스/Node 없이 두 유형의 실제 HTTP 흐름을 검증한다. 추가로 Node 24.16.0과 위 커밋의 프론트 소스가 있는 경우:
+기본 Gradle test는 외부 프론트 소스/Node 없이 두 유형의 실제 HTTP 흐름을 검증한다. 해당 프론트 커밋을 내려받아 Node 24.16.0으로 다음과 같이 검증할 수 있다.
 
 ```powershell
 $env:FRONTEND_CONTRACT_SOURCE = '프론트_소스의_절대경로'
-./gradlew.bat test --tests '*FrontendContractHttpTest' --no-daemon --console=plain
+./gradlew.bat test --rerun --tests '*FrontendContractHttpTest' --no-daemon --console=plain
 Remove-Item Env:FRONTEND_CONTRACT_SOURCE
 ```
 
-테스트가 H2 전용 fixture와 실제 Spring HTTP 서버를 만들고 scripts/verify-frontend-contract.mjs를 호출한다. 실제 프론트 TypeScript에서 타입만 제거하고 로컬 import 경로를 임시 디렉터리에 연결한다. 어댑터의 요청/응답 처리 코드는 교체하지 않는다. Node fetch에 쿠키 보관 기능을 붙여 세션과 CSRF를 전달한다. 별도 npm 의존성 설치는 필요 없다. 필요하면 FRONTEND_CONTRACT_NODE에 Node 실행 파일을 지정한다.
+테스트가 H2 전용 fixture와 실제 Spring HTTP 서버를 만들고 scripts/verify-frontend-contract.mjs를 호출한다. Node의 모듈 로더가 실제 프론트 TypeScript를 실행용으로 변환하고 로컬 import를 해석한다. Node fetch에 쿠키 보관 기능을 붙여 세션과 CSRF를 전달한다. 별도 npm 의존성 설치는 필요 없다. 필요하면 FRONTEND_CONTRACT_NODE에 Node 실행 파일을 지정한다.
 
-실제 어댑터로 18개 시나리오/44회 HTTP 요청을 검증했다. Node 및 소스가 없으면 해당 선택 테스트 한 건은 skip된다. 이 검증은 브라우저 UI·Next 프록시·CORS·배포 E2E 또는 실제 SMTP/학교 인증 운영 검증을 대체하지 않는다.
+2026-11-11 프론트는 18개 시나리오/44회 HTTP 요청, 2026-11-18 프론트는 22개 시나리오/53회 HTTP 요청을 검증했다. Node 및 소스가 없으면 해당 선택 테스트 한 건은 건너뛴다. 여기서 설명하는 어댑터 테스트의 범위는 Spring HTTP 요청·응답 계약이다.
 
 ## 다른 담당자와 확인할 연동 항목
 
 - 학교 가입: 위의 학번·이름 DTO와 @syuin.ac.kr 허용 정책이 현재 백엔드 계약이다. 프론트 signupOperations의 실제 연결 상태와 화면 필드 매핑은 별도 확인 항목이며 도메인 허용 여부와 구분한다. 11월 11일 고정 프론트 소스에서 가입 어댑터가 notConnected였다는 검증 이력으로 현재 백엔드의 미지원 여부를 판단하지 않는다.
 - 현재 사용자 전용 API가 없어 프론트는 저장한 최소 사용자 정보와 참여 내역 인증 조회로 세션을 확인한다.
-- 작성자 마감·모집 전체 취소·관리자 삭제, 신고·댓글, 내 작성글 이력은 연결 HTTP API가 없다. 서비스 훅 테스트나 화면 미리보기 통과를 API 연동 완료로 표시하지 않는다.
+- 관리자 삭제, 신고, 댓글에 대한 공개 HTTP API는 아직 제공되지 않는다.
