@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.SessionSecurityHttpTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-11-18T13:44:07.006Z" hostname="redacted" time="2.169">
+  <testcase name="validBasicCredentialsAreNotAcceptedOutsideDemo()" classname="com.school.party.domain.community.SessionSecurityHttpTest" time="0.183" />
+  <testcase name="[1] status = SUSPENDED" classname="com.school.party.domain.community.SessionSecurityHttpTest" time="0.192" />
+  <testcase name="[2] status = WITHDRAWN" classname="com.school.party.domain.community.SessionSecurityHttpTest" time="0.19" />
+  <testcase name="REV_realHttpUnsupportedAcceptCannotWriteAndReturnsJsonError()" classname="com.school.party.domain.community.SessionSecurityHttpTest" time="0.16" />
+  <testcase name="loginRotatesRealSessionIdAndRawCsrfCookie()" classname="com.school.party.domain.community.SessionSecurityHttpTest" time="0.159" />
+  <testcase name="[1] status = SUSPENDED" classname="com.school.party.domain.community.SessionSecurityHttpTest" time="0.14" />
+  <testcase name="[2] status = WITHDRAWN" classname="com.school.party.domain.community.SessionSecurityHttpTest" time="0.141" />
+  <testcase name="csrfEndpointMasksTheSameCookieAndLoginRejectsMissingOrForgedToken()" classname="com.school.party.domain.community.SessionSecurityHttpTest" time="0.144" />
+  <testcase name="freshLoginCreatesSessionAndReloginRotatesItAgain()" classname="com.school.party.domain.community.SessionSecurityHttpTest" time="0.214" />
+  <testcase name="logoutRequiresCsrfThenInvalidatesServerSessionAndClearsToken()" classname="com.school.party.domain.community.SessionSecurityHttpTest" time="0.161" />
+</testsuite>

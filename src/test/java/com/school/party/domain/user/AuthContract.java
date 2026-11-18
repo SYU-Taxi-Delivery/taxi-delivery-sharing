@@ -551,6 +551,26 @@ public abstract class AuthContract {
         clearInvocations(mail);
     }
 
+    // ------------------------------------------- login edge cases (weekly check)
+    @Test void LOGIN07_accountWithoutLocalCredentialIsRejectedWithout500() throws Exception {
+        users.save(User.builder().studentNo("20240038").name("자격정보없음").schoolEmail("20240038@syuin.ac.kr")
+            .role(Role.STUDENT).status(UserStatus.ACTIVE).build());
+        login("20240038", PASSWORD).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.error.code").value("AUTHENTICATION_REQUIRED"));
+        assertThat(count("local_credential")).isZero();
+    }
+
+    @Test void LOGIN08_malformedOversizedOrPaddedInputNeverCauses500() throws Exception {
+        account("20240039", Role.STUDENT, UserStatus.ACTIVE);
+        postJson("/api/auth/local/login", "{\"identifier\":").andExpect(status().isBadRequest());
+        postJson("/api/auth/local/login", "[]").andExpect(status().isBadRequest());
+        postJson("/api/auth/local/login", "{\"identifier\":{\"a\":1},\"password\":\"x\"}").andExpect(status().isBadRequest());
+        postJson("/api/auth/local/login", "{\"identifier\":\"20240039\",\"password\":null}").andExpect(status().isBadRequest());
+        login("2".repeat(5000), PASSWORD).andExpect(status().isUnauthorized());
+        login("x@" + "a".repeat(5000) + ".kr", PASSWORD).andExpect(status().isUnauthorized());
+        login("  20240039  ", PASSWORD).andExpect(status().isOk());
+        assertThat(credential(users.findByStudentNo("20240039").orElseThrow()).getFailedLoginCount()).isZero();
+    }
+
     /** Test-only admin endpoint used to check URL-level role rules. Not packaged into the app. */
     @RestController
     public static class RoleProbeController {
