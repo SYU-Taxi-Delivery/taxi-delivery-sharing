@@ -22,6 +22,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import static com.school.party.domain.community.api.ErrorCode.*;
 import static org.assertj.core.api.Assertions.*;
+import static org.hamcrest.Matchers.is;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -121,6 +122,88 @@ class RecruitmentConsistencyTest {
         clock.set(DEADLINE.plusSeconds(1));
         assertThat(recruitment(id, s1)).isEqualTo(RecruitmentStatus.APPLICATION_CLOSED);
         clock.set(TIME);
+        assertThat(recruitment(id, s1)).isEqualTo(RecruitmentStatus.FINISHED);
+    }
+
+    @Test void filteredPagesUseStableTimeAndRecentOrdering() throws Exception {
+        long firstAtSameTime = taxi(author, 4, TIME, "석계역", "삼육대학교");
+        clock.set(NOW.plusSeconds(1));
+        Instant from = TIME.minusSeconds(60);
+        Instant to = TIME.plusSeconds(60);
+        long earliest = taxi(s1, 4, from, "석계역", "삼육대학교");
+        long secondAtSameTime = taxi(s2, 4, TIME, "화랑대역", "삼육대학교");
+        long full = taxi(s3, 2, TIME, "석계역", "삼육대학교");
+        participation.join(full, s1.getId());
+        taxi(author, 4, from, "삼육대학교 후문", "석계역");
+        taxi(s2, 4, to, "석계역", "삼육대학교");
+
+        assertSearchPage(null, 0, from, to, earliest, firstAtSameTime);
+        assertSearchPage(null, 1, from, to, secondAtSameTime);
+        assertSearchPage(null, 2, from, to);
+        assertSearchPage("RECENT", 0, from, to, secondAtSameTime, earliest);
+        assertSearchPage("RECENT", 1, from, to, firstAtSameTime);
+    }
+
+    private void assertSearchPage(String sort, int page, Instant from, Instant to, long... ids) throws Exception {
+        var request = get("/api/posts").with(as(s3))
+            .param("type", "TAXI").param("direction", "TO_SCHOOL").param("joinable", "true")
+            .param("from", from.atOffset(ZoneOffset.ofHours(9)).toString())
+            .param("to", to.atOffset(ZoneOffset.ofHours(9)).toString())
+            .param("page", String.valueOf(page)).param("size", "2");
+        if (sort != null) request.param("sort", sort);
+        mvc.perform(request).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.page").value(page))
+            .andExpect(jsonPath("$.data.size").value(2))
+            .andExpect(jsonPath("$.data.totalElements").value(3))
+            .andExpect(jsonPath("$.data.totalPages").value(2))
+            .andExpect(jsonPath("$.data.items[*].postId").value(is(Arrays.stream(ids).mapToObj(Long::toString).toList())));
+    }
+
+    @Test void midnightScheduleUsesPreviousDayDeadlineForJoinAndCancel() throws Exception {
+        String schedule = "2026-11-14T00:05:00+09:00";
+        String cutoff = "2026-11-13T23:55:00+09:00";
+        Instant reference = OffsetDateTime.parse(schedule).toInstant();
+        Instant deadline = OffsetDateTime.parse(cutoff).toInstant();
+        long id = taxi(author, 3, reference, "석계역", "삼육대학교");
+        String path = "/api/posts/{id}/participants";
+
+        clock.set(deadline.minusSeconds(1));
+        mvc.perform(post(path, id).with(as(s1)).with(csrf()))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.data.action").value("INITIAL_JOIN"))
+            .andExpect(jsonPath("$.data.post.referenceTime").value(schedule))
+            .andExpect(jsonPath("$.data.post.participationDeadline").value(cutoff))
+            .andExpect(jsonPath("$.data.post.recruitmentStatus").value("RECRUITING"))
+            .andExpect(jsonPath("$.data.post.capacity").value(3))
+            .andExpect(jsonPath("$.data.post.currentMemberCount").value(2))
+            .andExpect(jsonPath("$.data.post.remainingSeats").value(1));
+        String participationId = participation.mine(id, s1.getId()).data().participation().participationId();
+        mvc.perform(delete(path, id).with(as(s1)).with(csrf()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.action").value("CANCEL"))
+            .andExpect(jsonPath("$.data.viewer.myParticipationStatus").value("CANCELLED"))
+            .andExpect(jsonPath("$.data.post.recruitmentStatus").value("RECRUITING"))
+            .andExpect(jsonPath("$.data.post.currentMemberCount").value(1))
+            .andExpect(jsonPath("$.data.post.remainingSeats").value(2));
+        mvc.perform(post(path, id).with(as(s1)).with(csrf()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.action").value("REJOIN"))
+            .andExpect(jsonPath("$.data.participation.participationId").value(participationId))
+            .andExpect(jsonPath("$.data.post.currentMemberCount").value(2))
+            .andExpect(jsonPath("$.data.post.remainingSeats").value(1));
+
+        for (Instant at : List.of(deadline, deadline.plusSeconds(1))) {
+            clock.set(at);
+            mvc.perform(post(path, id).with(as(s2)).with(csrf()))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("JOIN_TIME_CLOSED"))
+                .andExpect(jsonPath("$.error.details.post.recruitmentStatus").value("APPLICATION_CLOSED"))
+                .andExpect(jsonPath("$.error.details.post.participationDeadline").value(cutoff));
+            mvc.perform(delete(path, id).with(as(s1)).with(csrf()))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("CANCEL_TIME_CLOSED"))
+                .andExpect(jsonPath("$.error.details.post.recruitmentStatus").value("APPLICATION_CLOSED"))
+                .andExpect(jsonPath("$.error.details.post.currentMemberCount").value(2))
+                .andExpect(jsonPath("$.error.details.post.joinable").value(false));
+        }
+        assertThat(participations.findByPost_IdAndUser_Id(id, s2.getId())).isEmpty();
+        assertThat(participation.mine(id, s1.getId()).data().viewer().myParticipationStatus()).isEqualTo("JOINED");
+        clock.set(reference);
         assertThat(recruitment(id, s1)).isEqualTo(RecruitmentStatus.FINISHED);
     }
 

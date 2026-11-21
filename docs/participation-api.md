@@ -29,7 +29,7 @@ POST/DELETE는 Body가 없습니다. 최초 생성의 Location은 `/api/posts/{p
       "updatedAt": "2026-10-06T17:00:00+09:00", "cancelledAt": null
     },
     "post": {
-      "postId": "1", "type": "TAXI", "postStatus": "OPEN",
+      "postId": "1", "type": "TAXI", "postStatus": "OPEN", "recruitmentStatus": "RECRUITING",
       "referenceTime": "2026-10-06T18:00:00+09:00",
       "participationDeadline": "2026-10-06T17:50:00+09:00",
       "capacity": 4, "currentMemberCount": 2, "remainingSeats": 2,
@@ -47,7 +47,7 @@ POST/DELETE는 Body가 없습니다. 최초 생성의 Location은 `/api/posts/{p
 }
 ```
 
-action은 `INITIAL_JOIN`, `REJOIN`, `CANCEL` 중 하나입니다. 취소 시 status=CANCELLED, cancelledAt/updatedAt=판정시각입니다. 재참여 시 createdAt과 ID는 유지하고 cancelledAt=null, updatedAt=재참여시각으로 바꿉니다. 요청 처리가 DB에 커밋된 뒤 응답합니다.
+action은 `INITIAL_JOIN`, `REJOIN`, `CANCEL` 중 하나입니다. 취소 시 status=CANCELLED, cancelledAt/updatedAt=판정시각입니다. 재참여 시 createdAt과 ID는 유지하고 cancelledAt=null, updatedAt=재참여시각으로 바꿉니다. 요청 처리가 DB에 커밋된 뒤 응답하며, data.post에는 처리 후 모집 상태·정원·현재 인원·여석이 들어갑니다.
 
 본인 조회 응답은 위 data에서 action을 제외한 구조입니다. 기록이 없으면 `participation:null`, `myParticipationStatus:"NONE"`이며 200입니다. 작성자도 NONE이며 isAuthor=true입니다. 모집이 CANCELLED/FINISHED여도 조회 가능하고, REMOVED이면 404입니다.
 
@@ -132,7 +132,13 @@ page는 0 이상, size는 1~50입니다. status는 생략하거나 대문자 JOI
     "code": "JOIN_TIME_CLOSED", "message": "기준시각 10분 전부터 참여할 수 없습니다.",
     "details": {
       "postId": "1", "referenceTime": "2026-10-06T18:00:00+09:00",
-      "participationDeadline": "2026-10-06T17:50:00+09:00"
+      "participationDeadline": "2026-10-06T17:50:00+09:00",
+      "post": {
+        "postId": "1", "type": "TAXI", "postStatus": "OPEN", "recruitmentStatus": "APPLICATION_CLOSED",
+        "referenceTime": "2026-10-06T18:00:00+09:00",
+        "participationDeadline": "2026-10-06T17:50:00+09:00",
+        "capacity": 4, "currentMemberCount": 2, "remainingSeats": 2, "joinable": false
+      }
     }
   },
   "meta": {"evaluatedAt": "2026-10-06T17:50:00+09:00", "requestId": "uuid"}
