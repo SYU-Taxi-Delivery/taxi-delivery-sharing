@@ -83,6 +83,26 @@ public class EmailVerificationStore {
         verifiedUntil.put(new Key(purpose, email), clock.instant().plus(VERIFIED_TTL));
     }
 
+    /** Reads the verified flag without taking it, to reject unverified requests before costly work. */
+    public boolean isVerified(Purpose purpose, String email) {
+        Instant until = verifiedUntil.get(new Key(purpose, email));
+        return until != null && clock.instant().isBefore(until);
+    }
+
+    /**
+     * Puts back a code that {@link #verify} consumed when the work it authorized did not commit,
+     * so the user can retry with the same code. Keeps a newer code if one was issued meanwhile.
+     */
+    public void restoreCode(Purpose purpose, String email, String code, Instant issuedAt) {
+        pending.putIfAbsent(new Key(purpose, email), new Pending(code, issuedAt, 0));
+    }
+
+    /** When the current code for this address was issued, or null if there is none. */
+    public Instant issuedAt(Purpose purpose, String email) {
+        Pending current = pending.get(new Key(purpose, email));
+        return current == null ? null : current.issuedAt();
+    }
+
     /** Atomically takes the verified flag; only one concurrent caller can obtain it. */
     public Optional<Instant> consumeVerified(Purpose purpose, String email) {
         Instant until = verifiedUntil.remove(new Key(purpose, email));
