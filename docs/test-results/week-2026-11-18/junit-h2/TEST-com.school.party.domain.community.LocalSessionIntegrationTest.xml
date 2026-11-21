@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.LocalSessionIntegrationTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-11-18T13:43:57.547Z" hostname="redacted" time="1.742">
+  <testcase name="blankCredentialsAndInjectedUserIdAreRejected()" classname="com.school.party.domain.community.LocalSessionIntegrationTest" time="0.032" />
+  <testcase name="existingSessionCannotAccessApisAfterAccountIsSuspended()" classname="com.school.party.domain.community.LocalSessionIntegrationTest" time="0.154" />
+  <testcase name="wrongPasswordsPersistFailureCountAndLockAfterFiveAttempts()" classname="com.school.party.domain.community.LocalSessionIntegrationTest" time="0.437" />
+  <testcase name="csrfIsRequiredForLoginAndAnonymousCsrfEndpointWorks()" classname="com.school.party.domain.community.LocalSessionIntegrationTest" time="0.08" />
+  <testcase name="sessionIdChangesOnLoginAndLogoutInvalidatesSession()" classname="com.school.party.domain.community.LocalSessionIntegrationTest" time="0.164" />
+  <testcase name="schoolRegistrationLoginAndPostCreationShareTeamUserId()" classname="com.school.party.domain.community.LocalSessionIntegrationTest" time="0.237" />
+  <testcase name="inactiveAccountCannotEstablishSession()" classname="com.school.party.domain.community.LocalSessionIntegrationTest" time="0.138" />
+</testsuite>
