@@ -4,7 +4,6 @@ import tools.jackson.databind.JsonNode;
 import jakarta.servlet.http.HttpServletRequest;
 import com.school.party.domain.community.api.*;
 import com.school.party.domain.community.security.CurrentUser;
-import com.school.party.domain.community.service.PostLifecycleService;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -17,25 +16,22 @@ import static com.school.party.domain.community.post.PostResponse.*;
 @RequestMapping(value = "/api/posts", produces = MediaType.APPLICATION_JSON_VALUE)
 public class PostController {
     private final PostService service;
-    private final PostLifecycleService lifecycle;
     private final CurrentUser currentUser;
     private final Clock clock;
-    public PostController(PostService service, PostLifecycleService lifecycle, CurrentUser currentUser, Clock clock) {
-        this.service = service; this.lifecycle = lifecycle; this.currentUser = currentUser; this.clock = clock;
+    public PostController(PostService service, CurrentUser currentUser, Clock clock) {
+        this.service = service; this.currentUser = currentUser; this.clock = clock;
     }
     /** Author: close with the current members (현재 인원으로 모집 마감). Members and the link stay. */
     @PostMapping("/{postId}/close")
     public Envelope<Detail> close(@PathVariable String postId, @RequestBody(required = false) String body, Authentication auth, HttpServletRequest req) {
         long actor = currentUser.id(auth); long id = id(postId); noBody(body);
-        lifecycle.close(id, actor);
-        return ApiResponses.success(service.get(id, actor), req);
+        return ApiResponses.success(service.close(id, actor), req);
     }
     /** Author: cancel the whole schedule (일정 자체 취소). Every member is cancelled; cannot be undone. */
     @PostMapping("/{postId}/cancel")
     public Envelope<Detail> cancel(@PathVariable String postId, @RequestBody(required = false) String body, Authentication auth, HttpServletRequest req) {
         long actor = currentUser.id(auth); long id = id(postId); noBody(body);
-        lifecycle.cancelRecruitment(id, actor);
-        return ApiResponses.success(service.get(id, actor), req);
+        return ApiResponses.success(service.cancel(id, actor), req);
     }
     @PostMapping
     public ResponseEntity<Envelope<Detail>> create(@RequestBody CreatePostRequest body, Authentication auth, HttpServletRequest req) {

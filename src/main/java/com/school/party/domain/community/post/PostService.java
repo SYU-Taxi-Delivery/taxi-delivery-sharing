@@ -7,6 +7,7 @@ import com.school.party.domain.user.repository.UserRepository;
 import com.school.party.domain.community.api.*;
 import com.school.party.domain.community.domain.*;
 import com.school.party.domain.community.repository.*;
+import com.school.party.domain.community.service.PostLifecycleService;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.*;
@@ -25,9 +26,12 @@ public class PostService {
     private final UserRepository users;
     private final ParticipationRepository participations;
     private final PostValidator validator;
+    private final PostLifecycleService lifecycle;
     private final Clock clock;
-    public PostService(PostRepository posts, UserRepository users, ParticipationRepository participations, PostValidator validator, Clock clock) {
-        this.posts = posts; this.users = users; this.participations = participations; this.validator = validator; this.clock = clock;
+    public PostService(PostRepository posts, UserRepository users, ParticipationRepository participations, PostValidator validator,
+                       PostLifecycleService lifecycle, Clock clock) {
+        this.posts = posts; this.users = users; this.participations = participations; this.validator = validator;
+        this.lifecycle = lifecycle; this.clock = clock;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -66,6 +70,30 @@ public class PostService {
         return new Result<>(PostResponse.detail(post, actorId, null, joined, now), now);
     }
 
+    /**
+     * Author: close with the current members, and answer with the detail read in the same
+     * transaction (#35). If building the answer fails, the close is rolled back too, so a client
+     * never sees an error for a change that was actually saved.
+     */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Result<Detail> close(long postId, long actorId) {
+        lifecycle.close(postId, actorId);
+        return changedDetail(postId, actorId);
+    }
+    /** Author: cancel the whole schedule; same single-transaction answer as {@link #close}. */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Result<Detail> cancel(long postId, long actorId) {
+        lifecycle.cancelRecruitment(postId, actorId);
+        return changedDetail(postId, actorId);
+    }
+    /** Detail of a post this transaction just changed while still holding its lock. */
+    private Result<Detail> changedDetail(long postId, long actorId) {
+        Post post = posts.findById(postId).orElseThrow(() -> new ApiException(POST_NOT_FOUND, clock.instant()));
+        Instant now = clock.instant();
+        Participation mine = participations.findByPost_IdAndUser_Id(postId, actorId).orElse(null);
+        long joined = participations.countByPost_IdAndStatus(postId, ParticipationStatus.JOINED);
+        return new Result<>(PostResponse.detail(post, actorId, mine, joined, now), now);
+    }
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Result<Detail> get(long postId, long actorId) {
         actor(actorId);
