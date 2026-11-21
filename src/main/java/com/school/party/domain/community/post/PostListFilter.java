@@ -64,12 +64,13 @@ public record PostListFilter(int page, int size, PostType type, PostStatus statu
             predicates.add(cb.greaterThan(root.get("referenceTime"), now.plus(Duration.ofMinutes(10))));
         }
     }
-    /** Same normalization as {@link PostSearch#normalize}: no spaces, no "역", lower case. */
+    /** Removes the same fragments as {@link PostSearch#normalize} before matching. */
     private static Predicate contains(CriteriaBuilder cb, Root<Post> root, String field, String keyword) {
-        Expression<String> column = root.<String>get(field);
-        Expression<String> noSpace = cb.function("replace", String.class, column, cb.literal(" "), cb.literal(""));
-        Expression<String> noStation = cb.function("replace", String.class, noSpace, cb.literal("역"), cb.literal(""));
-        return cb.like(cb.lower(noStation), "%" + escape(keyword) + "%", '\\');
+        Expression<String> normalized = root.<String>get(field);
+        for (String fragment : PostSearch.IGNORED_FRAGMENTS) {
+            normalized = cb.function("replace", String.class, normalized, cb.literal(fragment), cb.literal(""));
+        }
+        return cb.like(cb.lower(normalized), "%" + escape(keyword) + "%", '\\');
     }
     private static String escape(String value) {
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
