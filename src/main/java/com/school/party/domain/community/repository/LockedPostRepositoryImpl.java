@@ -11,12 +11,14 @@ public class LockedPostRepositoryImpl implements LockedPostRepository {
 
     @Override public Optional<Post> findByIdForUpdate(long id) {
         MutationTransactions.requireWritableReadCommitted(entityManager);
+        boolean loadedBefore = ManagedEntities.contains(entityManager, Post.class, id);
         // Keep query auto-flush semantics and the existing POST row write lock.
         Optional<Post> post = entityManager.createQuery("select p from Post p where p.id = :id", Post.class)
             .setParameter("id", id).setLockMode(LockModeType.PESSIMISTIC_WRITE).getResultList().stream().findFirst();
         // A locking query alone may return an entity already present in the first-level cache.
-        // Rehydrate while still holding the lock so callers always validate committed DB state.
-        post.ifPresent(p -> entityManager.refresh(p, LockModeType.PESSIMISTIC_WRITE));
+        // Rehydrate that instance while still holding the lock so callers always validate committed
+        // DB state. A post first loaded by the query above is already current; skip the extra SELECT.
+        if (loadedBefore) post.ifPresent(p -> entityManager.refresh(p, LockModeType.PESSIMISTIC_WRITE));
         return post;
     }
 }
