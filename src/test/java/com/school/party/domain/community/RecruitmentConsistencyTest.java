@@ -221,6 +221,31 @@ class RecruitmentConsistencyTest {
         assertThat(participation.history(s1.getId(), 0, 20, null).data().items().get(0).post().communicationUrl()).isNull();
     }
 
+    /** The list says how each row relates to the viewer, like the detail's viewer, in one extra query per page. */
+    @Test void listRowsCarryTheViewersOwnRelation() throws Exception {
+        long joined = route();
+        long cancelled = delivery(author, 3, TIME.plus(Duration.ofHours(1)), "정문 김밥", "정문");
+        long own = taxi(s1, 4, TIME.plus(Duration.ofHours(2)), "기숙사", "석계역");
+        participation.join(joined, s1.getId());
+        participation.join(cancelled, s1.getId()); participation.cancel(cancelled, s1.getId());
+        participation.join(own, s2.getId());
+        mvc.perform(get("/api/posts").with(as(s1))).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items[?(@.postId == '%s')].viewer.myParticipationStatus", joined).value("JOINED"))
+            .andExpect(jsonPath("$.data.items[?(@.postId == '%s')].viewer.isAuthor", joined).value(false))
+            .andExpect(jsonPath("$.data.items[?(@.postId == '%s')].viewer.myParticipationStatus", cancelled).value("CANCELLED"))
+            .andExpect(jsonPath("$.data.items[?(@.postId == '%s')].viewer.isAuthor", own).value(true))
+            .andExpect(jsonPath("$.data.items[?(@.postId == '%s')].viewer.myParticipationStatus", own).value("NONE"));
+        // Another student sees no relation to the same rows.
+        mvc.perform(get("/api/posts").with(as(s3))).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items[?(@.postId == '%s')].viewer.myParticipationStatus", joined).value("NONE"))
+            .andExpect(jsonPath("$.data.items[?(@.postId == '%s')].viewer.isAuthor", own).value(false));
+        // My posts: always my own rows.
+        mvc.perform(get("/api/users/me/posts").with(as(s1))).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items[0].viewer.isAuthor").value(true));
+        // Same answer from the service the detail uses.
+        assertThat(service.get(joined, s1.getId()).data().viewer().myParticipationStatus()).isEqualTo("JOINED");
+    }
+
     @Test void searchMatchesPlaceSpellingVariantsDirectionTimeAndSort() {
         long a = taxi(author, 4, TIME, "삼육대학교 후문", "태릉입구역 7번 출구");
         long b = taxi(s1, 4, TIME.plus(Duration.ofHours(1)), "석계역 1번 출구", "삼육대학교 정문");
