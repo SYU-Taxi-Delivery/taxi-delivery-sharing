@@ -120,7 +120,7 @@ GET /api/posts?status=FINISHED
 
 status 생략 시 기능정의서 DISC-001의 기본 활성 목록으로 **실질 OPEN/FULL만** 조회한다. CLOSED/취소/종료는 명시적 필터로 조회한다. ALL도 REMOVED는 항상 제외한다. BR-03의 유효 모집 OPEN/FULL/CLOSED와 기본 탐색 목록 범위를 구분한다.
 
-정렬은 기본 referenceTime ASC, id ASC이고 `sort=RECENT`면 createdAt DESC, id DESC다. data는 `items/page/size/totalElements/totalPages`. items는 제목, 유형, 장소, 실질 상태(`postStatus`), 공개 모집 상태(`recruitmentStatus`), 기준/참여마감시각, 정원/인원/여석/joinable, 작성자 표시 이름이며 상세와 같은 값을 쓴다. 본문·소통 링크·명단은 포함하지 않는다. 페이지의 참여 인원은 묶어서 집계하며 모집별 개별 count 쿼리를 반복하지 않는다.
+정렬은 기본 referenceTime ASC, id ASC이고 `sort=RECENT`면 createdAt DESC, id DESC다. data는 `items/page/size/totalElements/totalPages`. items는 제목, 유형, 장소, 실질 상태(`postStatus`), 공개 모집 상태(`recruitmentStatus`), 기준/참여마감시각, 정원/인원/여석/joinable, 작성자 표시 이름이며 상세와 같은 값을 쓴다. 본문·소통 링크·명단은 포함하지 않는다. 각 항목의 `viewer`는 조회한 사용자와의 관계로 `isAuthor`(본인 글 여부)와 `myParticipationStatus`(NONE/JOINED/CANCELLED, 상세의 `viewer`와 같은 값)를 준다. 페이지의 내 참여 상태는 한 번의 쿼리로 묶어 조회한다(2026-11-22 추가). `GET /api/users/me/posts`의 `viewer`는 항상 `isAuthor=true`다. 페이지의 참여 인원은 묶어서 집계하며 모집별 개별 count 쿼리를 반복하지 않는다.
 
 ### 공개 모집 상태 recruitmentStatus
 

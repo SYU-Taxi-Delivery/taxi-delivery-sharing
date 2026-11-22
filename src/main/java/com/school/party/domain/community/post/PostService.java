@@ -119,7 +119,13 @@ public class PostService {
             ? Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")) : Sort.by("referenceTime", "id");
         Page<Post> found = posts.findAll(filter.specification(now), PageRequest.of(page, size, order));
         Map<Long, Long> joined = joinedCounts(found.getContent());
-        List<ListItem> items = found.map(p -> PostResponse.item(p, 1 + joined.getOrDefault(p.getId(), 0L), now)).getContent();
+        Map<Long, ParticipationStatus> mine = myStatuses(actorId, found.getContent());
+        List<ListItem> items = found.map(p -> {
+            boolean author = p.getAuthor().getId() == actorId;
+            ParticipationStatus relation = mine.get(p.getId());
+            return PostResponse.item(p, 1 + joined.getOrDefault(p.getId(), 0L), now, null,
+                new PostResponse.ListViewer(author, relation == null ? "NONE" : relation.name()));
+        }).getContent();
         return new Result<>(new PageView(items, page, size, found.getTotalElements(), found.getTotalPages()), now);
     }
 
@@ -136,7 +142,8 @@ public class PostService {
             PageRequest.of(page, size, Sort.by(Sort.Order.desc("referenceTime"), Sort.Order.desc("id"))));
         Map<Long, Long> joined = joinedCounts(found.getContent());
         List<ListItem> items = found.map(p -> PostResponse.item(p, 1 + joined.getOrDefault(p.getId(), 0L), now,
-            PostResponse.canViewLink(p, true, false, now) ? p.contentValues().communicationUrl() : null)).getContent();
+            PostResponse.canViewLink(p, true, false, now) ? p.contentValues().communicationUrl() : null,
+            new PostResponse.ListViewer(true, "NONE"))).getContent();
         return new Result<>(new PageView(items, page, size, found.getTotalElements(), found.getTotalPages()), now);
     }
 
@@ -147,6 +154,15 @@ public class PostService {
                 joined.put(count.getPostId(), count.getJoinedCount());
         }
         return joined;
+    }
+
+    private Map<Long, ParticipationStatus> myStatuses(long actorId, List<Post> found) {
+        Map<Long, ParticipationStatus> mine = new HashMap<>();
+        if (!found.isEmpty()) {
+            for (var row : participations.findMyStatuses(actorId, found.stream().map(Post::getId).toList()))
+                mine.put(row.getPostId(), row.getStatus());
+        }
+        return mine;
     }
 
     private void noConflict(long authorId, long excludedId, Instant reference, Instant now) {
