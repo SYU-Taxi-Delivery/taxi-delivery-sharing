@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.RecruitmentConsistencyTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-11-23T23:38:30.417Z" hostname="redacted" time="0.296">
+  <testcase name="authorCloseKeepsMembersButScheduleCancelEndsThem()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.016" />
+  <testcase name="sameRecordAcrossListDetailHistoryAndMyPosts()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.018" />
+  <testcase name="memberCancelRacingAuthorCloseNeverCountsTwice()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.014" />
+  <testcase name="fullReopensWhenASeatFreesBeforeTheDeadline()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.017" />
+  <testcase name="rejectedJoinReturnsTheLatestPublicStateWithoutPrivateData()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.015" />
+  <testcase name="linkAndMembersStayPrivate()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.03" />
+  <testcase name="joinRacingAuthorCloseEndsInOneConsistentState()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.011" />
+  <testcase name="repeatedJoinTapsCountOnce()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.015" />
+  <testcase name="authorLifecycleAndMyPostsOverHttp()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.039" />
+  <testcase name="listRowsCarryTheViewersOwnRelation()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.04" />
+  <testcase name="searchMatchesPlaceSpellingVariantsDirectionTimeAndSort()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.056" />
+  <testcase name="deadlineBoundaryIsTheSameForStatusAndValidation()" classname="com.school.party.domain.community.RecruitmentConsistencyTest" time="0.015" />
+</testsuite>

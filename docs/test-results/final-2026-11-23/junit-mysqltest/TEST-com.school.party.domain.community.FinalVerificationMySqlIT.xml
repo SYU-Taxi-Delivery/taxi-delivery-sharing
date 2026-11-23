@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.FinalVerificationMySqlIT" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-11-23T23:39:19.580Z" hostname="redacted" time="11.776">
+  <testcase name="PRIV03_noReadApiReturnsStudentNumbersOrEmailsOfAnyUser()" classname="com.school.party.domain.community.FinalVerificationMySqlIT" time="0.821" />
+  <testcase name="PRIV02_rejoiningRestoresAccessAndLeavingAgainRemovesIt()" classname="com.school.party.domain.community.FinalVerificationMySqlIT" time="0.255" />
+  <testcase name="PRIV04_listViewerDescribesOnlyTheRequester()" classname="com.school.party.domain.community.FinalVerificationMySqlIT" time="0.182" />
+  <testcase name="PRIV01_nonMembersAndLeaversNeverReachMemberListOrLinkInAnyState()" classname="com.school.party.domain.community.FinalVerificationMySqlIT" time="2.201" />
+  <testcase name="MIG01_flywayHistoryHasExactlyTheTwoRepositoryMigrationsSucceeded()" classname="com.school.party.domain.community.FinalVerificationMySqlIT" time="0.059" />
+  <testcase name="DB02_koreanNamesAndTitlesAreStoredAsUtf8mb4()" classname="com.school.party.domain.community.FinalVerificationMySqlIT" time="0.044" />
+  <testcase name="MIG02_everyConstraintDefinedInV1AndV2ExistsOnTheServer()" classname="com.school.party.domain.community.FinalVerificationMySqlIT" time="0.043" />
+  <testcase name="DB01_serviceTransactionsReallyRunReadCommittedOnTheServer()" classname="com.school.party.domain.community.FinalVerificationMySqlIT" time="0.048" />
+</testsuite>
