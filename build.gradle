@@ -14,6 +14,8 @@ version = '0.0.1-SNAPSHOT'
 // }
 
 repositories {
+	// Google's Maven Central mirror first, Maven Central as fallback (#48).
+	maven { url = 'https://maven-central.storage-download.googleapis.com/maven2/' }
 	mavenCentral()
 }
 
