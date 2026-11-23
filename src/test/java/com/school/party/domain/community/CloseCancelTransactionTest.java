@@ -9,6 +9,7 @@ import com.school.party.domain.community.repository.ParticipationRepository;
 import com.school.party.domain.community.repository.PostRepository;
 import com.school.party.domain.community.security.CampusUser;
 import com.school.party.domain.community.service.ParticipationService;
+import com.school.party.domain.community.service.PostLifecycleService;
 import com.school.party.domain.user.entity.User;
 import com.school.party.domain.user.enums.Role;
 import com.school.party.domain.user.enums.UserStatus;
@@ -31,10 +32,12 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -54,6 +57,7 @@ class CloseCancelTransactionTest {
     @Autowired UserRepository users;
     @Autowired MutableClock clock;
     @MockitoSpyBean ParticipationRepository participations;
+    @MockitoSpyBean PostLifecycleService lifecycle;
     User author, student;
     long postId;
 
@@ -95,6 +99,50 @@ class CloseCancelTransactionTest {
             .andExpect(jsonPath("$.data.postStatus").value("CANCELLED"))
             .andExpect(jsonPath("$.data.currentMemberCount").value(1));
         assertThat(participations.countByPost_IdAndStatus(postId, ParticipationStatus.JOINED)).isZero();
+    }
+
+    @Test void closeAnswerKeepsTheTransitionTimeWhenTheScheduleStartsBeforeTheAnswer() throws Exception {
+        Instant reference = posts.findById(postId).orElseThrow().getReferenceTime();
+        Instant transitionTime = reference.minusSeconds(1);
+        clock.set(transitionTime);
+        doAnswer(call -> {
+            Object result = call.callRealMethod();
+            clock.set(reference);
+            return result;
+        }).when(lifecycle).close(postId, author.getId());
+
+        mvc.perform(post("/api/posts/{id}/close", postId).with(as(author)).with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.postStatus").value("CLOSED"))
+            .andExpect(jsonPath("$.data.recruitmentStatus").value("CLOSED"))
+            .andExpect(jsonPath("$.data.currentMemberCount").value(2))
+            .andExpect(jsonPath("$.meta.evaluatedAt").value(transitionTime.atOffset(ZoneOffset.ofHours(9)).toString()));
+        assertThat(posts.findById(postId).orElseThrow().getStatus()).isEqualTo(PostStatus.CLOSED);
+
+        mvc.perform(get("/api/posts/{id}", postId).with(as(author)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.postStatus").value("FINISHED"))
+            .andExpect(jsonPath("$.data.recruitmentStatus").value("FINISHED"))
+            .andExpect(jsonPath("$.data.communicationUrl").doesNotExist());
+    }
+
+    @Test void cancelAnswerUsesTheSameTimeAsTheMemberCancellation() throws Exception {
+        Instant reference = posts.findById(postId).orElseThrow().getReferenceTime();
+        Instant transitionTime = reference.minusSeconds(1);
+        clock.set(transitionTime);
+        doAnswer(call -> {
+            Object result = call.callRealMethod();
+            clock.set(reference);
+            return result;
+        }).when(lifecycle).cancelRecruitment(postId, author.getId());
+
+        mvc.perform(post("/api/posts/{id}/cancel", postId).with(as(author)).with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.recruitmentStatus").value("CANCELLED"))
+            .andExpect(jsonPath("$.data.currentMemberCount").value(1))
+            .andExpect(jsonPath("$.meta.evaluatedAt").value(transitionTime.atOffset(ZoneOffset.ofHours(9)).toString()));
+        assertThat(participations.findByPost_IdAndUser_Id(postId, student.getId()).orElseThrow().getCancelledAt())
+            .isEqualTo(transitionTime);
     }
 
     /** Simulates the database failing while the answer is built, after the change was made. */

@@ -144,6 +144,8 @@ status 생략 시 기능정의서 DISC-001의 기본 활성 목록으로 **실�
 
 작성자만 가능하며 OPEN/FULL/CLOSED를 CANCELLED로 바꾸고 모든 참가자를 취소한다. 되돌릴 수 없다. 응답은 최신 상세(`recruitmentStatus=CANCELLED`, 인원 1명). 소통 링크는 더 이상 누구에게도 내려가지 않는다.
 
+작성자 마감과 일정 취소의 성공 응답은 모집글 잠금 획득 후 상태를 바꿀 때 사용한 시각으로 상세 상태를 계산하며, 같은 시각을 `meta.evaluatedAt`에 넣는다. 이후 상세 조회는 조회 시각을 사용하므로, 일정 기준시각에 도달한 마감 글은 조회 시 `FINISHED`로 표시한다.
+
 ## 7. 내 작성 글 — GET /api/users/me/posts
 
 `page`(0~), `size`(1~50). 관리자 삭제 글을 뺀 본인 작성 글 전체를 기준시각 최근 순으로 준다. 항목 형식은 목록과 같고, 일정이 활성(OPEN/FULL/CLOSED)인 동안 본인 글의 `communicationUrl`을 함께 준다.

@@ -71,28 +71,26 @@ public class PostService {
     }
 
     /**
-     * Author: close with the current members, and answer with the detail read in the same
-     * transaction (#35). If building the answer fails, the close is rolled back too, so a client
-     * never sees an error for a change that was actually saved.
+     * Author: close with the current members and build the detail in the same transaction (#35).
+     * A failure while building the detail rolls back the close.
      */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Result<Detail> close(long postId, long actorId) {
-        lifecycle.close(postId, actorId);
-        return changedDetail(postId, actorId);
+        Instant evaluatedAt = lifecycle.close(postId, actorId);
+        return changedDetail(postId, actorId, evaluatedAt);
     }
     /** Author: cancel the whole schedule; same single-transaction answer as {@link #close}. */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Result<Detail> cancel(long postId, long actorId) {
-        lifecycle.cancelRecruitment(postId, actorId);
-        return changedDetail(postId, actorId);
+        Instant evaluatedAt = lifecycle.cancelRecruitment(postId, actorId);
+        return changedDetail(postId, actorId, evaluatedAt);
     }
-    /** Detail of a post this transaction just changed while still holding its lock. */
-    private Result<Detail> changedDetail(long postId, long actorId) {
-        Post post = posts.findById(postId).orElseThrow(() -> new ApiException(POST_NOT_FOUND, clock.instant()));
-        Instant now = clock.instant();
+    /** Use the transition time sampled under the post lock for the response too. */
+    private Result<Detail> changedDetail(long postId, long actorId, Instant evaluatedAt) {
+        Post post = posts.findById(postId).orElseThrow(() -> new ApiException(POST_NOT_FOUND, evaluatedAt));
         Participation mine = participations.findByPost_IdAndUser_Id(postId, actorId).orElse(null);
         long joined = participations.countByPost_IdAndStatus(postId, ParticipationStatus.JOINED);
-        return new Result<>(PostResponse.detail(post, actorId, mine, joined, now), now);
+        return new Result<>(PostResponse.detail(post, actorId, mine, joined, evaluatedAt), evaluatedAt);
     }
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Result<Detail> get(long postId, long actorId) {

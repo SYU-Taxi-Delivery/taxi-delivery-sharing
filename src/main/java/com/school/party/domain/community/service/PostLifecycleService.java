@@ -23,15 +23,17 @@ public class PostLifecycleService {
         this.posts = posts; this.participations = participations; this.users = users; this.clock = clock;
     }
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public void close(long postId, long actorId) {
+    public Instant close(long postId, long actorId) {
         Post post = lock(postId); Instant now = clock.instant(); owner(post, actorId, now); active(post, now);
         if (post.getStatus() == PostStatus.CLOSED) throw new ApiException(POST_CLOSED, now);
         post.transitionTo(PostStatus.CLOSED, now);
+        return now;
     }
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public void cancelRecruitment(long postId, long actorId) {
+    public Instant cancelRecruitment(long postId, long actorId) {
         Post post = lock(postId); Instant now = clock.instant(); owner(post, actorId, now); active(post, now);
         cancelMembers(postId, now); post.transitionTo(PostStatus.CANCELLED, now);
+        return now;
     }
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public void remove(long postId, long actorId) {
