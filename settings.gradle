@@ -1,1 +1,9 @@
+pluginManagement {
+	repositories {
+		// Render's shared build IPs get HTTP 429 from Maven Central (#48); try Google's mirror first.
+		maven { url = 'https://maven-central.storage-download.googleapis.com/maven2/' }
+		gradlePluginPortal()
+	}
+}
+
 rootProject.name = 'taxi-delivery-sharing'
