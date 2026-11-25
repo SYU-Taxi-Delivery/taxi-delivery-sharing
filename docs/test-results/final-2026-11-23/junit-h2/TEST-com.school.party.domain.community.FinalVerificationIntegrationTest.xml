@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.FinalVerificationIntegrationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-23T23:38:15.525Z" hostname="redacted" time="2.296">
+  <testcase name="PRIV03_noReadApiReturnsStudentNumbersOrEmailsOfAnyUser()" classname="com.school.party.domain.community.FinalVerificationIntegrationTest" time="0.346" />
+  <testcase name="PRIV02_rejoiningRestoresAccessAndLeavingAgainRemovesIt()" classname="com.school.party.domain.community.FinalVerificationIntegrationTest" time="0.113" />
+  <testcase name="PRIV04_listViewerDescribesOnlyTheRequester()" classname="com.school.party.domain.community.FinalVerificationIntegrationTest" time="0.081" />
+  <testcase name="PRIV01_nonMembersAndLeaversNeverReachMemberListOrLinkInAnyState()" classname="com.school.party.domain.community.FinalVerificationIntegrationTest" time="1.187" />
+</testsuite>

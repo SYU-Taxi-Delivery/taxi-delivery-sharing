@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.IntegrityAccessIntegrationTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-11-23T23:38:19.728Z" hostname="redacted" time="0.961">
+  <testcase name="ACC01_onlyTheAuthorCanCloseOrCancelAndRejectedCallsChangeNothing()" classname="com.school.party.domain.community.IntegrityAccessIntegrationTest" time="0.064" />
+  <testcase name="ACC02_memberListAndLinkAreVisibleOnlyToAuthorAndCurrentMembers()" classname="com.school.party.domain.community.IntegrityAccessIntegrationTest" time="0.122" />
+  <testcase name="INT02_rapidAlternatingRequestsBySameUserLeaveOneConsistentRecord()" classname="com.school.party.domain.community.IntegrityAccessIntegrationTest" time="0.071" />
+  <testcase name="INT03_listDetailAndMyViewsMatchStoredRowsAfterRaces()" classname="com.school.party.domain.community.IntegrityAccessIntegrationTest" time="0.08" />
+  <testcase name="ACC04_suspendedOrWithdrawnSessionIsRejectedOnEveryNewEndpoint()" classname="com.school.party.domain.community.IntegrityAccessIntegrationTest" time="0.034" />
+  <testcase name="INT01_mixedConcurrentJoinCancelCloseKeepsEveryStoredRule()" classname="com.school.party.domain.community.IntegrityAccessIntegrationTest" time="0.111" />
+  <testcase name="INT00_integrityCheckerReportsDeliberatelyBrokenRows()" classname="com.school.party.domain.community.IntegrityAccessIntegrationTest" time="0.02" />
+  <testcase name="INT04_searchTreatsWildcardCharactersAsPlainText()" classname="com.school.party.domain.community.IntegrityAccessIntegrationTest" time="0.06" />
+  <testcase name="ACC03_myEndpointsNeverReturnOtherUsersData()" classname="com.school.party.domain.community.IntegrityAccessIntegrationTest" time="0.027" />
+</testsuite>
