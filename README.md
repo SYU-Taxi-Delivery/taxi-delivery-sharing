@@ -13,6 +13,7 @@
 - [실행·Gradle 테스트·학교 계정 로그인·DB 적용](docs/running.md)
 - [모집글 API 명세](docs/post-api.md)
 - [Participation API 명세](docs/participation-api.md)
+- [댓글·신고 API 명세](docs/comment-report-api.md)
 - [모집글 비즈니스 규칙](docs/post-business-rules.md)
 - [검증 결과](docs/verification.md)
 

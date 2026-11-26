@@ -35,20 +35,23 @@ class FinalVerificationMySqlIT extends FinalVerificationContract {
     @Autowired PlatformTransactionManager transactions;
 
     // ------------------------------------------------------------- 11/23 migration result
-    @Test void MIG01_flywayHistoryHasExactlyTheTwoRepositoryMigrationsSucceeded() {
+    // V3 (#53) adds the comment and report tables.
+    @Test void MIG01_flywayHistoryHasExactlyTheRepositoryMigrationsSucceeded() {
         List<Map<String, Object>> history = jdbc.queryForList(
             "select version, type, success from flyway_schema_history order by installed_rank");
         assertThat(history).extracting(r -> r.get("version") + ":" + r.get("type") + ":" + r.get("success"))
-            .containsExactly("1:SQL:true", "2:SQL:true");
+            .containsExactly("1:SQL:true", "2:SQL:true", "3:SQL:true");
     }
 
-    @Test void MIG02_everyConstraintDefinedInV1AndV2ExistsOnTheServer() {
+    @Test void MIG02_everyConstraintDefinedInTheMigrationsExistsOnTheServer() {
         List<String> names = jdbc.queryForList("select constraint_name from information_schema.table_constraints "
             + "where table_schema = database()", String.class);
         assertThat(names).contains("fk_user_auth_user", "fk_local_credential_user", "fk_refresh_token_user", "uq_user_auth_provider",
             "fk_post_author", "fk_post_deleted_by", "fk_participation_post", "fk_participation_user", "uq_participation_post_user",
             "ck_post_type", "ck_post_status", "ck_post_capacity", "ck_post_fields", "ck_post_places", "ck_post_text",
-            "ck_post_reference_minute", "ck_participation_state");
+            "ck_post_reference_minute", "ck_participation_state",
+            "fk_post_comment_post", "fk_post_comment_author", "ck_post_comment_content",
+            "fk_post_report_post", "fk_post_report_reporter", "uq_post_report_post_reporter", "ck_post_report_reason");
         assertThat(jdbc.queryForObject("select count(*) from information_schema.statistics where table_schema = database() "
             + "and table_name = 'users' and non_unique = 0 and column_name in ('student_no','school_email')", Long.class)).isEqualTo(2);
     }
