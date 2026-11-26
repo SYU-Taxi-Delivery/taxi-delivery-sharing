@@ -100,4 +100,5 @@ Remove-Item Env:FRONTEND_CONTRACT_SOURCE
 
 - 학교 가입: 위의 학번·이름 DTO와 @syuin.ac.kr 허용 정책이 현재 백엔드 계약이다. 프론트 signupOperations의 실제 연결 상태와 화면 필드 매핑은 별도 확인 항목이며 도메인 허용 여부와 구분한다. 11월 11일 고정 프론트 소스에서 가입 어댑터가 notConnected였다는 검증 이력으로 현재 백엔드의 미지원 여부를 판단하지 않는다.
 - 현재 사용자 전용 API가 없어 프론트는 저장한 최소 사용자 정보와 참여 내역 인증 조회로 세션을 확인한다.
-- 작성자 마감·모집 전체 취소·관리자 삭제, 신고·댓글, 내 작성글 이력은 연결 HTTP API가 없다. 서비스 훅 테스트나 화면 미리보기 통과를 API 연동 완료로 표시하지 않는다.
+- 관리자 삭제는 연결 HTTP API가 없다. 서비스 훅 테스트나 화면 미리보기 통과를 API 연동 완료로 표시하지 않는다.
+- 작성자 마감·모집 취소(`POST /api/posts/{id}/close`, `/cancel`)와 내 작성글(`GET /api/users/me/posts`)은 제공한다. 댓글·신고는 [댓글·신고 API](comment-report-api.md)로 추가했다(#53).

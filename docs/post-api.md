@@ -89,6 +89,7 @@ DB에 위 계산값을 저장하지 않는다. `joinable`은 모집 자체의 �
 | canEdit | 작성자 + OPEN/FULL/CLOSED |
 | canEditCore | canEdit + CLOSED 아님 + JOINED 없음 |
 | canViewCommunicationUrl | OPEN/FULL/CLOSED의 작성자 또는 현재 JOINED |
+| reported | 조회한 사용자가 이 모집을 이미 신고함(작성자는 항상 false). [댓글·신고 API](comment-report-api.md) |
 
 소통 링크는 허용된 사용자에게만 반환하고, 비참가자·참여 취소자·종료/취소 모집에서는 URL 필드 자체를 생략한다. 상세에 참가자 명단·이메일·학번·전화번호를 넣지 않는다. 명단은 기존 `/participants` API에서 권한을 검사한다. REMOVED는 404로 비노출한다.
 

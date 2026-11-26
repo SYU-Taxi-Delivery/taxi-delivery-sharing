@@ -32,6 +32,14 @@ public enum ErrorCode {
     JOIN_TIME_CLOSED(CONFLICT, "기준시각 10분 전부터 참여할 수 없습니다."),
     CANCEL_TIME_CLOSED(CONFLICT, "기준시각 10분 전부터 참여를 취소할 수 없습니다."),
     ALREADY_CANCELLED(CONFLICT, "이미 취소된 참여입니다."),
+    INVALID_COMMENT_ID(BAD_REQUEST, "댓글 ID의 형식 또는 범위가 올바르지 않습니다."),
+    INVALID_COMMENT(BAD_REQUEST, "댓글은 1자 이상 500자 이하로 입력해 주세요."),
+    COMMENT_FORBIDDEN(FORBIDDEN, "본인 댓글만 삭제할 수 있습니다."),
+    COMMENT_NOT_FOUND(NOT_FOUND, "댓글을 찾을 수 없습니다."),
+    COMMENT_CLOSED(CONFLICT, "취소되었거나 기준시각이 지난 모집에는 댓글을 쓸 수 없습니다."),
+    INVALID_REPORT(BAD_REQUEST, "신고 사유 또는 상세 내용이 올바르지 않습니다."),
+    SELF_REPORT_NOT_ALLOWED(FORBIDDEN, "본인 모집은 신고할 수 없습니다."),
+    DUPLICATE_REPORT(CONFLICT, "이미 신고한 모집입니다."),
     PARTICIPATION_TEMPORARILY_UNAVAILABLE(SERVICE_UNAVAILABLE, "일시적으로 처리할 수 없습니다. 본인 참여 상태를 확인해 주세요."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 처리 중 오류가 발생했습니다.");
     private final HttpStatus status;
