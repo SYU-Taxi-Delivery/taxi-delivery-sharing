@@ -22,6 +22,15 @@ demo는 일회성 H2 DB를 사용하며 학교 인증 대신 author, student1, s
 
 실제 DB는 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` 환경변수로 연결한다. 기본 설정은 MySQL, UTC DATETIME 저장, Flyway 활성화, Hibernate validate다. 사용자 이메일 발송은 기존 application.properties의 SMTP 설정을 환경변수 `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`로 설정한다.
 
+인증번호 메일은 두 가지 방식 중 하나로 보낸다 (#51).
+
+| 방식 | 언제 쓰나 | 환경변수 |
+|---|---|---|
+| Brevo HTTPS API | `BREVO_API_KEY`가 있을 때. 배포 서버(Render)는 이 방식만 된다 | `BREVO_API_KEY`(Brevo API 키), `MAIL_FROM`(Brevo에서 인증한 보내는 주소, 필수), `MAIL_FROM_NAME`(보내는 사람 이름, 기본 `택시·배달 합승`) |
+| SMTP | `BREVO_API_KEY`가 없을 때 (로컬 개발 기본값) | 위의 `SPRING_MAIL_*` |
+
+Render 무료 웹 서비스는 메일 서버 포트(25, 465, 587)로 나가는 연결을 막기 때문에, 배포 서버에서 SMTP로 보내면 `Connect timed out` 후 503 `MAIL_DELIVERY_FAILED`가 된다. Brevo는 443 포트(HTTPS)를 써서 이 제한을 받지 않는다. 무료 요금제는 하루 300통까지다. `BREVO_API_KEY`가 있는데 `MAIL_FROM`이 비어 있으면 앱이 시작되지 않는다. 두 방식 모두 연결·응답을 5초까지만 기다리고, 발송에 실패하면 인증번호를 폐기해 바로 다시 요청할 수 있다.
+
 전용 테스트 DB를 준비한 다음 `PARTICIPATION_TEST_DB_URL`, `PARTICIPATION_TEST_DB_USERNAME`, `PARTICIPATION_TEST_DB_PASSWORD`를 설정하고 아래 계약 테스트를 실행한다. 이 테스트는 데이터를 정리하므로 반드시 별도 테스트 DB를 사용한다.
 
 동시성 재검증은 실제 락 대기도 관찰한다. 전용 MariaDB 테스트 계정에는 PROCESS 등 InnoDB 락 메타데이터 조회 권한이 필요하다. MySQL 컨테이너 테스트는 일회성 컨테이너 root를 사용한다. 운영 앱 계정에 이 검증용 권한을 부여할 필요는 없다.

@@ -26,3 +26,14 @@ server:
   error:
     include-message: never
     include-stacktrace: never
+app:
+  mail:
+    # Render's free web services block outbound SMTP (25/465/587), so the deployment sends mail
+    # through Brevo's HTTPS API (#51). Leave BREVO_API_KEY unset to keep using SMTP (spring.mail.*).
+    brevo:
+      api-key: ${BREVO_API_KEY:}
+      base-url: https://api.brevo.com
+      timeout: 5s
+    # Sender address verified in Brevo. Required when BREVO_API_KEY is set.
+    from: ${MAIL_FROM:}
+    from-name: ${MAIL_FROM_NAME:택시·배달 합승}
