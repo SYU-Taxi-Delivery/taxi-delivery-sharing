@@ -399,6 +399,18 @@ public abstract class AuthContract {
         else assertThat(results).contains("OK");
     }
 
+    @Test void LOGIN06_inactiveAccountWithCorrectPasswordChangesNothing() throws Exception {
+        // #37: a suspended account must not get its failure counter reset or a login time recorded.
+        User user = account("20240023", Role.STUDENT, UserStatus.ACTIVE);
+        for (int i = 0; i < 2; i++) login("20240023", "wrong-password").andExpect(status().isUnauthorized());
+        jdbc.update("update users set status = 'SUSPENDED' where id = ?", user.getId());
+        login("20240023", PASSWORD).andExpect(status().isUnauthorized());
+        login("20240023", "wrong-password").andExpect(status().isUnauthorized());
+        assertThat(credential(user).getFailedLoginCount()).isEqualTo(2);
+        assertThat(credential(user).getLockedUntil()).isNull();
+        assertThat(users.findById(user.getId()).orElseThrow().getLastLoginAt()).isNull();
+    }
+
     protected String serviceLogin(String identifier, String password) {
         try {
             LocalLoginRequest request = mapper.readValue(mapper.writeValueAsString(
@@ -471,6 +483,24 @@ public abstract class AuthContract {
     }
 
     // ------------------------------------------------------------------- roles
+    @Test void RESET05_failedSaveKeepsTheCodeForRetry() throws Exception {
+        // #36: when saving the new password fails, the same code must still work.
+        User user = account("20240034", Role.STUDENT, UserStatus.ACTIVE);
+        postJson("/api/auth/password-reset/send-code", Map.of("schoolEmail", "20240034@syuin.ac.kr")).andExpect(status().isOk());
+        String code = lastCode("20240034@syuin.ac.kr");
+        doThrow(new org.springframework.dao.TransientDataAccessResourceException("simulated outage"))
+            .when(credentialSpy).findByUserIdForUpdate(any());
+        postJson("/api/auth/password-reset/confirm", Map.of("schoolEmail", "20240034@syuin.ac.kr", "code", code,
+            "newPassword", "Brand-new-pass2")).andExpect(status().isServiceUnavailable());
+        reset(credentialSpy);
+        login("20240034", PASSWORD).andExpect(status().isOk());
+        postJson("/api/auth/password-reset/confirm", Map.of("schoolEmail", "20240034@syuin.ac.kr", "code", code,
+            "newPassword", "Brand-new-pass2")).andExpect(status().isOk());
+        login("20240034", "Brand-new-pass2").andExpect(status().isOk());
+        assertThat(credential(user).getPasswordUpdatedAt())
+            .isEqualTo(java.time.LocalDateTime.ofInstant(clock.instant(), java.time.ZoneOffset.UTC));
+    }
+
     @Test void ROLE01_studentAndAdminReachOnlyTheirFunctions() throws Exception {
         User student = account("20240040", Role.STUDENT, UserStatus.ACTIVE);
         User admin = account("20240041", Role.ADMIN, UserStatus.ACTIVE);
@@ -549,6 +579,72 @@ public abstract class AuthContract {
             .isInstanceOf(DataIntegrityViolationException.class);
         assertThat(count("users")).isEqualTo(1);
         clearInvocations(mail);
+    }
+
+    // ------------------------------------------- login edge cases (weekly check)
+    @Test void LOGIN07_accountWithoutLocalCredentialIsRejectedWithout500() throws Exception {
+        users.save(User.builder().studentNo("20240038").name("자격정보없음").schoolEmail("20240038@syuin.ac.kr")
+            .role(Role.STUDENT).status(UserStatus.ACTIVE).build());
+        login("20240038", PASSWORD).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.error.code").value("AUTHENTICATION_REQUIRED"));
+        assertThat(count("local_credential")).isZero();
+    }
+
+    @Test void LOGIN08_malformedOversizedOrPaddedInputNeverCauses500() throws Exception {
+        account("20240039", Role.STUDENT, UserStatus.ACTIVE);
+        postJson("/api/auth/local/login", "{\"identifier\":").andExpect(status().isBadRequest());
+        postJson("/api/auth/local/login", "[]").andExpect(status().isBadRequest());
+        postJson("/api/auth/local/login", "{\"identifier\":{\"a\":1},\"password\":\"x\"}").andExpect(status().isBadRequest());
+        postJson("/api/auth/local/login", "{\"identifier\":\"20240039\",\"password\":null}").andExpect(status().isBadRequest());
+        login("2".repeat(5000), PASSWORD).andExpect(status().isUnauthorized());
+        login("x@" + "a".repeat(5000) + ".kr", PASSWORD).andExpect(status().isUnauthorized());
+        login("  20240039  ", PASSWORD).andExpect(status().isOk());
+        assertThat(credential(users.findByStudentNo("20240039").orElseThrow()).getFailedLoginCount()).isZero();
+    }
+
+    // ------------------------------- final auth exception checks (week of 2026-11-23)
+    @Test void LOGIN09_lockedAccountStaysLockedUnderConcurrentCorrectPasswords() throws Exception {
+        // Passwords are compared outside the row lock (PR #40); the lock must still be re-checked inside it.
+        User user = account("20240091", Role.STUDENT, UserStatus.ACTIVE);
+        for (int i = 0; i < 5; i++) login("20240091", "wrong-password").andExpect(status().isUnauthorized());
+        var lockedUntil = credential(user).getLockedUntil();
+        assertThat(lockedUntil).isNotNull();
+        List<Callable<String>> tasks = new ArrayList<>();
+        for (int i = 0; i < 8; i++) tasks.add(() -> serviceLogin("20240091", PASSWORD));
+        assertThat(compete(tasks)).allMatch(v -> v.equals("REJECTED"));
+        assertThat(credential(user).getFailedLoginCount()).isEqualTo(5);
+        assertThat(credential(user).getLockedUntil()).isEqualTo(lockedUntil);
+        assertThat(users.findById(user.getId()).orElseThrow().getLastLoginAt()).isNull();
+    }
+
+    @Test void LOGIN10_oldPasswordNeverWorksAfterAConcurrentResetCommits() throws Exception {
+        User user = account("20240092", Role.STUDENT, UserStatus.ACTIVE);
+        String email = "20240092@syuin.ac.kr";
+        postJson("/api/auth/password-reset/send-code", Map.of("schoolEmail", email)).andExpect(status().isOk());
+        String code = lastCode(email);
+        List<Callable<String>> tasks = new ArrayList<>();
+        tasks.add(() -> httpAttempt(() -> postJson("/api/auth/password-reset/confirm",
+            Map.of("schoolEmail", email, "code", code, "newPassword", "Brand-new-pass9"))));
+        for (int i = 0; i < 3; i++) tasks.add(() -> serviceLogin("20240092", PASSWORD));
+        List<String> results = compete(tasks);
+        assertThat(results.get(0)).isEqualTo("OK");
+        assertThat(results.subList(1, 4)).allMatch(v -> v.equals("OK") || v.equals("REJECTED"));
+        // Whatever the interleaving, after the reset only the new password is accepted.
+        assertThat(serviceLogin("20240092", PASSWORD)).isEqualTo("REJECTED");
+        assertThat(serviceLogin("20240092", "Brand-new-pass9")).isEqualTo("OK");
+        assertThat(encoder.matches("Brand-new-pass9", credential(user).getPasswordHash())).isTrue();
+    }
+
+    @Test void LOGIN11_rejectedLoginsNeverRevealWhetherAnAccountExistsOrIsLocked() throws Exception {
+        account("20240093", Role.STUDENT, UserStatus.ACTIVE);
+        account("20240094", Role.STUDENT, UserStatus.SUSPENDED);
+        for (int i = 0; i < 5; i++) login("20240093", "wrong-password").andExpect(status().isUnauthorized());
+        List<String> bodies = new ArrayList<>();
+        for (String[] attempt : List.of(new String[]{"no-such-user", PASSWORD}, new String[]{"20240093", PASSWORD},
+                new String[]{"20240094", PASSWORD}, new String[]{"20240093", "wrong-password"})) {
+            var response = login(attempt[0], attempt[1]).andExpect(status().isUnauthorized()).andReturn().getResponse();
+            bodies.add(mapper.readTree(response.getContentAsString()).path("error").toString());
+        }
+        assertThat(bodies).as("unknown, locked, suspended and wrong-password answers").containsOnly(bodies.get(0));
     }
 
     /** Test-only admin endpoint used to check URL-level role rules. Not packaged into the app. */

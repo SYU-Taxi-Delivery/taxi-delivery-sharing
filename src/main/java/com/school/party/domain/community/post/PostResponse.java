@@ -9,13 +9,15 @@ import static com.school.party.domain.community.api.ApiModels.*;
 public final class PostResponse {
     private PostResponse() {}
     public record Viewer(boolean isAuthor, String myParticipationStatus, boolean canJoin, boolean canCancel,
-        boolean canEdit, boolean canEditCore, boolean canViewCommunicationUrl) {}
+        boolean canEdit, boolean canEditCore, boolean canViewCommunicationUrl, boolean reported) {}
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Detail(String postId, PostType type, String title, String content, AuthorView author,
         PostStatus postStatus, RecruitmentStatus recruitmentStatus, OffsetDateTime referenceTime, OffsetDateTime participationDeadline,
         int capacity, long currentMemberCount, long remainingSeats, boolean joinable,
         String departure, String destination, String restaurantName, String pickupLocation, String orderGuide,
         String communicationUrl, OffsetDateTime createdAt, OffsetDateTime updatedAt, Viewer viewer) {}
+    /** The viewer's relation to a list row: own post, or NONE / JOINED / CANCELLED. */
+    public record ListViewer(boolean isAuthor, String myParticipationStatus) {}
     /**
      * List row. Carries the same schedule, places, author and counts as the detail
      * so a post never reads differently between screens. communicationUrl is only
@@ -25,10 +27,12 @@ public final class PostResponse {
     public record ListItem(String postId, PostType type, String title, PostStatus postStatus, RecruitmentStatus recruitmentStatus,
         OffsetDateTime referenceTime, OffsetDateTime participationDeadline, int capacity,
         long currentMemberCount, long remainingSeats, boolean joinable, String departure,
-        String destination, String restaurantName, String pickupLocation, AuthorView author, String communicationUrl) {}
+        String destination, String restaurantName, String pickupLocation, AuthorView author, String communicationUrl,
+        ListViewer viewer) {}
     public record PageView(List<ListItem> items, int page, int size, long totalElements, int totalPages) {}
 
-    public static Detail detail(Post post, long actorId, Participation mine, long joinedCount, Instant now) {
+    /** {@code reported}: the viewer already reported this post (always false for the author, who cannot report it). */
+    public static Detail detail(Post post, long actorId, Participation mine, long joinedCount, boolean reported, Instant now) {
         PostContent v = post.contentValues(); PostStatus status = post.effectiveStatus(now);
         long count = 1 + joinedCount;
         boolean author = post.getAuthor().getId() == actorId;
@@ -39,19 +43,18 @@ public final class PostResponse {
         boolean canLink = canViewLink(post, author, joined, now);
         Viewer viewer = new Viewer(author, mine == null ? "NONE" : mine.getStatus().name(),
             joinable && !author && !joined, joined && active && before, canEdit,
-            canEdit && status != PostStatus.CLOSED && joinedCount == 0, canLink);
+            canEdit && status != PostStatus.CLOSED && joinedCount == 0, canLink, reported);
         return new Detail(post.getId().toString(), v.type(), v.title(), v.content(), new AuthorView(post.getAuthor().getName()),
             status, post.recruitmentStatus(now, count), seoul(v.referenceTime()), seoul(post.deadline()), v.capacity(), count,
             Math.max(0, v.capacity() - count), joinable, v.departure(), v.destination(), v.restaurantName(), v.pickupLocation(),
             v.orderGuide(), canLink ? v.communicationUrl() : null, seoul(post.getCreatedAt()), seoul(post.getUpdatedAt()), viewer);
     }
-    public static ListItem item(Post p, long count, Instant now) { return item(p, count, now, null); }
-    public static ListItem item(Post p, long count, Instant now, String communicationUrl) {
+    public static ListItem item(Post p, long count, Instant now, String communicationUrl, ListViewer viewer) {
         PostContent v = p.contentValues();
         return new ListItem(p.getId().toString(), v.type(), v.title(), p.effectiveStatus(now), p.recruitmentStatus(now, count),
             seoul(v.referenceTime()), seoul(p.deadline()), v.capacity(), count, Math.max(0, v.capacity() - count),
             joinable(p, count, now), v.departure(), v.destination(), v.restaurantName(), v.pickupLocation(),
-            new AuthorView(p.getAuthor().getName()), communicationUrl);
+            new AuthorView(p.getAuthor().getName()), communicationUrl, viewer);
     }
     /**
      * The external link is private to the author and current members while the

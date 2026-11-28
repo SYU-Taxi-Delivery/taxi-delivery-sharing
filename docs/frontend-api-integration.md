@@ -43,6 +43,17 @@
 
 생성에는 type을 포함하고 수정에서는 제외한다. 선택 필드의 null은 값 삭제를 뜻하며 필수값 null은 거절한다. 작성 시 반대 유형 필드를 보내지 않는다. 상세에는 개인정보 ID/메일/학번을 추가 노출하지 않는다.
 
+## 모집글·참여 연동 상태
+
+| 항목 | 현재 연동 | 상태 |
+|---|---|---|
+| 작성자 모집 마감·모집 취소 | `POST /api/posts/{id}/close`, `POST /api/posts/{id}/cancel` 연결 | 해결 |
+| 작성한 모집 목록 | 작성한 글 탭에서 `GET /api/users/me/posts` 호출 | 해결 |
+| 참여 가능한 글만 보기 | 목록 조회 시 `GET /api/posts?joinable=true` 사용 | 해결 |
+| 내 참여 내역 | `GET /api/users/me/participations`의 `items[].post`에 장소·정원·현재 인원·여석·`joinable`·`participationDeadline` 포함 | 해결 |
+
+관리자가 삭제한 글의 내 참여 내역은 [참여 API 명세](participation-api.md#내역-조회)에 따라 최소 정보만 반환한다.
+
 ## 세션·CSRF와 프록시
 
 1. GET /api/csrf의 data.headerName/token과 반환 쿠키를 보관한다. 쿠키 원본을 헤더에 그대로 복사하지 않는다.
@@ -107,4 +118,5 @@ Remove-Item Env:FRONTEND_CONTRACT_SOURCE
 
 - 학교 가입: 위의 학번·이름 DTO와 @syuin.ac.kr 허용 정책이 현재 백엔드 계약이다. 프론트 signupOperations의 실제 연결 상태와 화면 필드 매핑은 별도 확인 항목이며 도메인 허용 여부와 구분한다. 11월 11일 고정 프론트 소스에서 가입 어댑터가 notConnected였다는 검증 이력으로 현재 백엔드의 미지원 여부를 판단하지 않는다.
 - 현재 사용자 전용 API가 없어 프론트는 저장한 최소 사용자 정보와 참여 내역 인증 조회로 세션을 확인한다.
-- 관리자 삭제, 신고, 댓글에 대한 공개 HTTP API는 아직 제공되지 않는다.
+- 관리자 삭제는 연결 HTTP API가 없다. 서비스 훅 테스트나 화면 미리보기 통과를 API 연동 완료로 표시하지 않는다.
+- 작성자 마감·모집 취소(`POST /api/posts/{id}/close`, `/cancel`)와 내 작성글(`GET /api/users/me/posts`)은 제공한다. 댓글·신고는 [댓글·신고 API](comment-report-api.md)로 추가했다(#53).

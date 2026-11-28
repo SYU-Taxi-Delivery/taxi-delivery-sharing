@@ -9,11 +9,15 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
     long countByPost_IdAndStatus(long postId, ParticipationStatus status);
     @Query("select p from Participation p join fetch p.user where p.post.id = :postId and p.status = :status order by p.createdAt, p.id")
     List<Participation> findMembers(@Param("postId") long postId, @Param("status") ParticipationStatus status);
-    @EntityGraph(attributePaths = "post")
+    @EntityGraph(attributePaths = {"post", "post.author"})
     Page<Participation> findByUser_Id(long userId, Pageable pageable);
-    @EntityGraph(attributePaths = "post")
+    @EntityGraph(attributePaths = {"post", "post.author"})
     Page<Participation> findByUser_IdAndStatus(long userId, ParticipationStatus status, Pageable pageable);
     interface PostCount { Long getPostId(); long getJoinedCount(); }
+    interface MyStatus { Long getPostId(); ParticipationStatus getStatus(); }
+    /** The viewer's own participation status per post, for one list page in one query. */
+    @Query("select p.post.id as postId, p.status as status from Participation p where p.user.id = :userId and p.post.id in :postIds")
+    List<MyStatus> findMyStatuses(@Param("userId") long userId, @Param("postIds") Collection<Long> postIds);
     @Query("select p.post.id as postId, count(p) as joinedCount from Participation p where p.post.id in :postIds and p.status = com.school.party.domain.community.domain.ParticipationStatus.JOINED group by p.post.id")
     List<PostCount> countJoinedByPosts(@Param("postIds") Collection<Long> postIds);
 }

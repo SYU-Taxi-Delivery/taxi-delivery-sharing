@@ -112,6 +112,10 @@ page는 0 이상, size는 1~50입니다. status는 생략하거나 대문자 JOI
 
 참여·참여 취소가 409로 거절되면 `error.details.post`에 그 순간의 공개 상태(`postStatus`, `recruitmentStatus`, `referenceTime`, `participationDeadline`, `capacity`, `currentMemberCount`, `remainingSeats`, `joinable`)를 함께 준다. 화면은 다시 조회하지 않고 "방금 정원이 찼어요"(POST_FULL), "신청 기한이 지났어요"(JOIN_TIME_CLOSED), "작성자가 모집을 마감했어요"(POST_CLOSED)처럼 안내하고 상태를 갱신할 수 있다. 명단과 소통 링크는 들어 있지 않다.
 
+## 재시도 기준 (2026-11-18, #34)
+
+참여·참여 취소 요청의 응답이 끊기면 같은 요청을 다시 보내지 않고 `GET /api/posts/{postId}/participants/me`로 결과를 확인한다. 이미 처리된 요청을 다시 보내 409 `ALREADY_JOINED` / `ALREADY_CANCELLED` 또는 404 `PARTICIPATION_NOT_FOUND`를 받으면 실패로 안내하지 않고 내 참여 상태를 다시 조회해 화면을 맞춘다. 거절 응답의 `error.details.post` 형식은 유지한다. 전체 기준은 [모집글 API의 재시도 기준](post-api.md#재시도-기준-2026-11-18-34)에 있다.
+
 ## 정책과 동시성
 
 - TAXI 정원 2~4, DELIVERY 2~10. 작성자 포함 `1 + JOINED 수`를 계산하며 count 캐시 컬럼은 사용하지 않습니다.

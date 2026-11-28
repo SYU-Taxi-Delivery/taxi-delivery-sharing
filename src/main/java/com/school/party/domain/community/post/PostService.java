@@ -7,6 +7,7 @@ import com.school.party.domain.user.repository.UserRepository;
 import com.school.party.domain.community.api.*;
 import com.school.party.domain.community.domain.*;
 import com.school.party.domain.community.repository.*;
+import com.school.party.domain.community.service.PostLifecycleService;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.*;
@@ -24,10 +25,14 @@ public class PostService {
     private final PostRepository posts;
     private final UserRepository users;
     private final ParticipationRepository participations;
+    private final ReportRepository reports;
     private final PostValidator validator;
+    private final PostLifecycleService lifecycle;
     private final Clock clock;
-    public PostService(PostRepository posts, UserRepository users, ParticipationRepository participations, PostValidator validator, Clock clock) {
-        this.posts = posts; this.users = users; this.participations = participations; this.validator = validator; this.clock = clock;
+    public PostService(PostRepository posts, UserRepository users, ParticipationRepository participations, ReportRepository reports,
+                       PostValidator validator, PostLifecycleService lifecycle, Clock clock) {
+        this.posts = posts; this.users = users; this.participations = participations; this.reports = reports; this.validator = validator;
+        this.lifecycle = lifecycle; this.clock = clock;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -39,7 +44,7 @@ public class PostService {
         validator.future(values.referenceTime(), now);
         noConflict(actorId, 0, values.referenceTime(), now);
         Post post = posts.saveAndFlush(Post.create(author, values, now));
-        return new Result<>(PostResponse.detail(post, actorId, null, 0, now), now);
+        return new Result<>(PostResponse.detail(post, actorId, null, 0, false, now), now);
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -63,9 +68,32 @@ public class PostService {
         }
         post.apply(values, now);
         posts.flush();
-        return new Result<>(PostResponse.detail(post, actorId, null, joined, now), now);
+        return new Result<>(PostResponse.detail(post, actorId, null, joined, false, now), now);
     }
 
+    /**
+     * Author: close with the current members and build the detail in the same transaction (#35).
+     * A failure while building the detail rolls back the close.
+     */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Result<Detail> close(long postId, long actorId) {
+        Instant evaluatedAt = lifecycle.close(postId, actorId);
+        return changedDetail(postId, actorId, evaluatedAt);
+    }
+    /** Author: cancel the whole schedule; same single-transaction answer as {@link #close}. */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Result<Detail> cancel(long postId, long actorId) {
+        Instant evaluatedAt = lifecycle.cancelRecruitment(postId, actorId);
+        return changedDetail(postId, actorId, evaluatedAt);
+    }
+    /** Use the transition time sampled under the post lock for the response too. */
+    private Result<Detail> changedDetail(long postId, long actorId, Instant evaluatedAt) {
+        Post post = posts.findById(postId).orElseThrow(() -> new ApiException(POST_NOT_FOUND, evaluatedAt));
+        Participation mine = participations.findByPost_IdAndUser_Id(postId, actorId).orElse(null);
+        long joined = participations.countByPost_IdAndStatus(postId, ParticipationStatus.JOINED);
+        // Only the author closes or cancels, and the author cannot report their own post.
+        return new Result<>(PostResponse.detail(post, actorId, mine, joined, false, evaluatedAt), evaluatedAt);
+    }
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Result<Detail> get(long postId, long actorId) {
         actor(actorId);
@@ -73,7 +101,8 @@ public class PostService {
         Instant now = clock.instant(); visible(post, now);
         Participation mine = participations.findByPost_IdAndUser_Id(postId, actorId).orElse(null);
         long joined = participations.countByPost_IdAndStatus(postId, ParticipationStatus.JOINED);
-        return new Result<>(PostResponse.detail(post, actorId, mine, joined, now), now);
+        boolean reported = reports.existsByPost_IdAndReporter_Id(postId, actorId);
+        return new Result<>(PostResponse.detail(post, actorId, mine, joined, reported, now), now);
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -91,7 +120,13 @@ public class PostService {
             ? Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")) : Sort.by("referenceTime", "id");
         Page<Post> found = posts.findAll(filter.specification(now), PageRequest.of(page, size, order));
         Map<Long, Long> joined = joinedCounts(found.getContent());
-        List<ListItem> items = found.map(p -> PostResponse.item(p, 1 + joined.getOrDefault(p.getId(), 0L), now)).getContent();
+        Map<Long, ParticipationStatus> mine = myStatuses(actorId, found.getContent());
+        List<ListItem> items = found.map(p -> {
+            boolean author = p.getAuthor().getId() == actorId;
+            ParticipationStatus relation = mine.get(p.getId());
+            return PostResponse.item(p, 1 + joined.getOrDefault(p.getId(), 0L), now, null,
+                new PostResponse.ListViewer(author, relation == null ? "NONE" : relation.name()));
+        }).getContent();
         return new Result<>(new PageView(items, page, size, found.getTotalElements(), found.getTotalPages()), now);
     }
 
@@ -108,7 +143,8 @@ public class PostService {
             PageRequest.of(page, size, Sort.by(Sort.Order.desc("referenceTime"), Sort.Order.desc("id"))));
         Map<Long, Long> joined = joinedCounts(found.getContent());
         List<ListItem> items = found.map(p -> PostResponse.item(p, 1 + joined.getOrDefault(p.getId(), 0L), now,
-            PostResponse.canViewLink(p, true, false, now) ? p.contentValues().communicationUrl() : null)).getContent();
+            PostResponse.canViewLink(p, true, false, now) ? p.contentValues().communicationUrl() : null,
+            new PostResponse.ListViewer(true, "NONE"))).getContent();
         return new Result<>(new PageView(items, page, size, found.getTotalElements(), found.getTotalPages()), now);
     }
 
@@ -119,6 +155,15 @@ public class PostService {
                 joined.put(count.getPostId(), count.getJoinedCount());
         }
         return joined;
+    }
+
+    private Map<Long, ParticipationStatus> myStatuses(long actorId, List<Post> found) {
+        Map<Long, ParticipationStatus> mine = new HashMap<>();
+        if (!found.isEmpty()) {
+            for (var row : participations.findMyStatuses(actorId, found.stream().map(Post::getId).toList()))
+                mine.put(row.getPostId(), row.getStatus());
+        }
+        return mine;
     }
 
     private void noConflict(long authorId, long excludedId, Instant reference, Instant now) {

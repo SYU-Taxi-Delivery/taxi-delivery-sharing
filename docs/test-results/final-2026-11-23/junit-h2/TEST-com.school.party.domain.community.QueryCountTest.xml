@@ -1,0 +1,5 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.QueryCountTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-11-23T23:38:29.966Z" hostname="redacted" time="0.451">
+  <testcase name="historyQueryCountDoesNotGrowWithDifferentAuthors()" classname="com.school.party.domain.community.QueryCountTest" time="0.049" />
+  <testcase name="joinLoadsThePostOnce()" classname="com.school.party.domain.community.QueryCountTest" time="0.006" />
+</testsuite>

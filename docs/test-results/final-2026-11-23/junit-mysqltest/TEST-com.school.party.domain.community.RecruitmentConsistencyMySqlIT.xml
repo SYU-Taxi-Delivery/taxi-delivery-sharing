@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-11-23T23:40:06.529Z" hostname="redacted" time="9.258">
+  <testcase name="authorCloseKeepsMembersButScheduleCancelEndsThem()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.068" />
+  <testcase name="sameRecordAcrossListDetailHistoryAndMyPosts()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.059" />
+  <testcase name="memberCancelRacingAuthorCloseNeverCountsTwice()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.048" />
+  <testcase name="fullReopensWhenASeatFreesBeforeTheDeadline()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.072" />
+  <testcase name="rejectedJoinReturnsTheLatestPublicStateWithoutPrivateData()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.066" />
+  <testcase name="linkAndMembersStayPrivate()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.111" />
+  <testcase name="joinRacingAuthorCloseEndsInOneConsistentState()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.041" />
+  <testcase name="repeatedJoinTapsCountOnce()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.04" />
+  <testcase name="authorLifecycleAndMyPostsOverHttp()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.102" />
+  <testcase name="listRowsCarryTheViewersOwnRelation()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.139" />
+  <testcase name="searchMatchesPlaceSpellingVariantsDirectionTimeAndSort()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.215" />
+  <testcase name="deadlineBoundaryIsTheSameForStatusAndValidation()" classname="com.school.party.domain.community.RecruitmentConsistencyMySqlIT" time="0.089" />
+</testsuite>

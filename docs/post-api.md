@@ -89,6 +89,7 @@ DB에 위 계산값을 저장하지 않는다. `joinable`은 모집 자체의 �
 | canEdit | 작성자 + OPEN/FULL/CLOSED |
 | canEditCore | canEdit + CLOSED 아님 + JOINED 없음 |
 | canViewCommunicationUrl | OPEN/FULL/CLOSED의 작성자 또는 현재 JOINED |
+| reported | 조회한 사용자가 이 모집을 이미 신고함(작성자는 항상 false). [댓글·신고 API](comment-report-api.md) |
 
 소통 링크는 허용된 사용자에게만 반환하고, 비참가자·참여 취소자·종료/취소 모집에서는 URL 필드 자체를 생략한다. 상세에 참가자 명단·이메일·학번·전화번호를 넣지 않는다. 명단은 기존 `/participants` API에서 권한을 검사한다. REMOVED는 404로 비노출한다.
 
@@ -116,11 +117,11 @@ GET /api/posts?status=FINISHED
 | joinable | false | true면 지금 참여할 수 있는 글만 (실질 OPEN, 기준시각 10분 전 이전) |
 | sort | TIME | TIME(기준시각 빠른 순) / RECENT(최근 작성 순) |
 
-장소 검색은 공백·대소문자·'역'을 무시한다. `태릉`, `태릉입구`, `태릉 입구역`은 모두 `태릉입구역 7번 출구`와, `7번출구`는 `7번 출구`와 일치한다. 학교 방향은 장소에 `삼육대`가 들어 있는지로 판단한다.
+장소 검색은 검색어와 저장된 장소명에서 일반 공백·탭·줄바꿈, 대소문자 차이, '역'을 무시한다. `태릉`, `태릉입구`, `태릉 입구역`은 모두 `태릉입구역 7번 출구`와, `7번출구`는 `7번 출구`와 일치한다. 학교 방향은 장소에 `삼육대`가 들어 있는지로 판단한다.
 
 status 생략 시 기능정의서 DISC-001의 기본 활성 목록으로 **실질 OPEN/FULL만** 조회한다. CLOSED/취소/종료는 명시적 필터로 조회한다. ALL도 REMOVED는 항상 제외한다. BR-03의 유효 모집 OPEN/FULL/CLOSED와 기본 탐색 목록 범위를 구분한다.
 
-정렬은 기본 referenceTime ASC, id ASC이고 `sort=RECENT`면 createdAt DESC, id DESC다. data는 `items/page/size/totalElements/totalPages`. items는 제목, 유형, 장소, 실질 상태(`postStatus`), 공개 모집 상태(`recruitmentStatus`), 기준/참여마감시각, 정원/인원/여석/joinable, 작성자 표시 이름이며 상세와 같은 값을 쓴다. 본문·소통 링크·명단은 포함하지 않는다. 페이지의 참여 인원은 묶어서 집계하며 모집별 개별 count 쿼리를 반복하지 않는다.
+정렬은 기본 referenceTime ASC, id ASC이고 `sort=RECENT`면 createdAt DESC, id DESC다. data는 `items/page/size/totalElements/totalPages`. items는 제목, 유형, 장소, 실질 상태(`postStatus`), 공개 모집 상태(`recruitmentStatus`), 기준/참여마감시각, 정원/인원/여석/joinable, 작성자 표시 이름이며 상세와 같은 값을 쓴다. 본문·소통 링크·명단은 포함하지 않는다. 각 항목의 `viewer`는 조회한 사용자와의 관계로 `isAuthor`(본인 글 여부)와 `myParticipationStatus`(NONE/JOINED/CANCELLED, 상세의 `viewer`와 같은 값)를 준다. 페이지의 내 참여 상태는 한 번의 쿼리로 묶어 조회한다(2026-11-22 추가). `GET /api/users/me/posts`의 `viewer`는 항상 `isAuthor=true`다. 페이지의 참여 인원은 묶어서 집계하며 모집별 개별 count 쿼리를 반복하지 않는다.
 
 ### 공개 모집 상태 recruitmentStatus
 
@@ -144,9 +145,39 @@ status 생략 시 기능정의서 DISC-001의 기본 활성 목록으로 **실�
 
 작성자만 가능하며 OPEN/FULL/CLOSED를 CANCELLED로 바꾸고 모든 참가자를 취소한다. 되돌릴 수 없다. 응답은 최신 상세(`recruitmentStatus=CANCELLED`, 인원 1명). 소통 링크는 더 이상 누구에게도 내려가지 않는다.
 
+작성자 마감과 일정 취소의 성공 응답은 모집글 잠금 획득 후 상태를 바꿀 때 사용한 시각으로 상세 상태를 계산하며, 같은 시각을 `meta.evaluatedAt`에 넣는다. 이후 상세 조회는 조회 시각을 사용하므로, 일정 기준시각에 도달한 마감 글은 조회 시 `FINISHED`로 표시한다.
+
 ## 7. 내 작성 글 — GET /api/users/me/posts
 
 `page`(0~), `size`(1~50). 관리자 삭제 글을 뺀 본인 작성 글 전체를 기준시각 최근 순으로 준다. 항목 형식은 목록과 같고, 일정이 활성(OPEN/FULL/CLOSED)인 동안 본인 글의 `communicationUrl`을 함께 준다.
+
+## 재시도 기준 (2026-11-18, #34)
+
+응답이 네트워크에서 끊겼을 때 첫 요청이 이미 처리됐을 수 있다. 상태를 바꾸는 요청을 그대로 다시 보내면 성공한 작업이 409로 보이므로, 프론트와 아래 기준을 합의했다. 서버 응답 형식은 바꾸지 않는다.
+
+1. 상태를 바꾸는 요청(POST·PATCH·DELETE)은 자동 재시도하지 않는다. 요청 중에는 버튼과 코드 양쪽에서 중복 전송을 막는다.
+   - 예외: 403 `CSRF_INVALID`이면 `GET /api/csrf`로 토큰을 새로 받아 1번만 다시 보낸다. CSRF 검사는 Spring Security 필터에서 컨트롤러보다 먼저 일어나므로 같은 요청이 두 번 처리되지 않는다.
+   - 프론트는 변경 요청에 15초 타임아웃을 두고, 시간이 지나면 '결과 모름'으로 본다.
+2. 응답이 끊기거나 타임아웃이 나면 다시 보내지 않고 조회로 결과를 확인한다.
+
+| 요청 | 결과 확인 방법 |
+|---|---|
+| 작성 `POST /api/posts` | `GET /api/users/me/posts` 첫 페이지에서 같은 유형·기준시각·제목의 글을 찾는다 |
+| 수정 `PATCH /api/posts/{postId}` | `GET /api/posts/{postId}` |
+| 작성자 마감·일정 취소 | `GET /api/posts/{postId}`의 `postStatus` |
+| 참여·참여 취소 | `GET /api/posts/{postId}/participants/me` ([참여 API](participation-api.md#재시도-기준-2026-11-18-34)) |
+| 가입 `POST /api/auth/school-email/register` | 입력한 학번·비밀번호로 로그인. 가입은 이메일 인증 후에만 완료되므로 가입된 계정에 '미인증' 상태는 없다. 로그인이 401이면 가입되지 않았을 수 있다고 안내한다 |
+| 비밀번호 재설정 `POST /api/auth/password-reset/confirm` | 새 비밀번호로 로그인 |
+
+3. 아래 409는 실패가 아니라 "이미 처리됨"으로 보고 성공 화면으로 넘어간다.
+
+| 요청 | 응답 | 화면 |
+|---|---|---|
+| 본인 글 작성자 마감 | 409 `POST_CLOSED` | 마감됨 |
+| 본인 글 일정 취소 | 409 `POST_CANCELLED` | 취소됨 |
+| 참여·참여 취소 | 409 `ALREADY_JOINED` / `ALREADY_CANCELLED`, 404 `PARTICIPATION_NOT_FOUND` | 내 참여 상태를 다시 조회해 '참여 중'·'취소됨'으로 맞춘다 |
+
+글 작성의 중복 요청을 서버가 키로 막는 방식(Idempotency-Key)은 DB 변경이 필요해 이번에는 도입하지 않았다. 같은 작성자가 같은 기준시각에 유효 모집을 두 개 만들 수 없으므로(409 `POST_TIME_CONFLICT`) 같은 글이 두 번 생기지는 않는다. 응답이 끊긴 뒤 다시 등록해 이 409를 받으면 위 표의 조회로 확인한다.
 
 ## 주요 오류
 
@@ -169,7 +200,7 @@ status 생략 시 기능정의서 DISC-001의 기본 활성 목록으로 **실�
 
 ## 동시성 / DB 적용
 
-수동 마감·모집 전체 취소·관리자 soft delete는 현재 서비스 훅이며 연결 HTTP API는 없다. 일반 `DELETE /api/posts/{postId}`는 제공하지 않아 405다. `DELETE /api/posts/{postId}/participants`는 본인 참여 취소 API로 구분한다. [2026-11-11 검증 결과](revalidation/post-participation-2026-11-11.md)를 참고한다.
+작성자 마감(5절)과 일정 취소(6절)는 HTTP API로 제공한다. 관리자 soft delete는 서비스 훅이며 연결 HTTP API는 없다. 일반 `DELETE /api/posts/{postId}`는 제공하지 않아 405다. `DELETE /api/posts/{postId}/participants`는 본인 참여 취소 API로 구분한다. [2026-11-11 검증 결과](revalidation/post-participation-2026-11-11.md)를 참고한다.
 
 작성과 수정은 READ COMMITTED 쓰기 트랜잭션이다. 작성자 USERS 행을 먼저 잠그므로 첫 모집의 동시 생성도 직렬화된다. 수정은 작성자 → POST 순서로 잠근다. 참여/취소는 기존 POST 잠금을 유지하고 작성자 행을 잠그지 않는다. 필요한 잠금을 획득한 다음 서버 시각·상태·참가 조건·중복을 검사하고 저장한다. 실패 시 전체 롤백한다.
 

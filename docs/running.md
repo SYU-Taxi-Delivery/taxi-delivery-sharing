@@ -22,6 +22,15 @@ demo는 일회성 H2 DB를 사용하며 학교 인증 대신 author, student1, s
 
 실제 DB는 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` 환경변수로 연결한다. 기본 설정은 MySQL, UTC DATETIME 저장, Flyway 활성화, Hibernate validate다. 사용자 이메일 발송은 기존 application.properties의 SMTP 설정을 환경변수 `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`로 설정한다.
 
+인증번호 메일은 두 가지 방식 중 하나로 보낸다 (#51).
+
+| 방식 | 언제 쓰나 | 환경변수 |
+|---|---|---|
+| Brevo HTTPS API | `BREVO_API_KEY`가 있을 때. 배포 서버(Render)는 이 방식만 된다 | `BREVO_API_KEY`(Brevo API 키), `MAIL_FROM`(Brevo에서 인증한 보내는 주소, 필수), `MAIL_FROM_NAME`(보내는 사람 이름, 기본 `택시·배달 합승`) |
+| SMTP | `BREVO_API_KEY`가 없을 때 (로컬 개발 기본값) | 위의 `SPRING_MAIL_*` |
+
+Render 무료 웹 서비스는 메일 서버 포트(25, 465, 587)로 나가는 연결을 막기 때문에, 배포 서버에서 SMTP로 보내면 `Connect timed out` 후 503 `MAIL_DELIVERY_FAILED`가 된다. Brevo는 443 포트(HTTPS)를 써서 이 제한을 받지 않는다. 무료 요금제는 하루 300통까지다. `BREVO_API_KEY`가 있는데 `MAIL_FROM`이 비어 있으면 앱이 시작되지 않는다. 두 방식 모두 연결·응답을 5초까지만 기다리고, 발송에 실패하면 인증번호를 폐기해 바로 다시 요청할 수 있다.
+
 전용 테스트 DB를 준비한 다음 `PARTICIPATION_TEST_DB_URL`, `PARTICIPATION_TEST_DB_USERNAME`, `PARTICIPATION_TEST_DB_PASSWORD`를 설정하고 아래 계약 테스트를 실행한다. 이 테스트는 데이터를 정리하므로 반드시 별도 테스트 DB를 사용한다.
 
 동시성 재검증은 실제 락 대기도 관찰한다. 전용 MariaDB 테스트 계정에는 PROCESS 등 InnoDB 락 메타데이터 조회 권한이 필요하다. MySQL 컨테이너 테스트는 일회성 컨테이너 root를 사용한다. 운영 앱 계정에 이 검증용 권한을 부여할 필요는 없다.
@@ -58,6 +67,27 @@ Docker가 있으면 `./gradlew.bat mysqlTest`로 MySQL 8.4 계약 테스트를 �
 V1과 동일한 기존 스키마임을 확인한 경우에만 담당자가 Flyway CLI에서 version 1로 baseline한 뒤 앱을 실행해 V2를 적용한다. `baseline-on-migrate`를 자동으로 켜거나 공유 DB를 초기화하지 않는다. 이전 taxi-delivery-user-backend의 DB는 별도 이력을 가지므로 이 baseline 절차의 대상이 아니다.
 
 2026-11-13 PM 확인 결과, 데이터를 보존해야 하는 기존 팀 사용자 DB는 없다. 따라서 위 baseline 절차는 현재 적용 대상이 없다. 배포용 MySQL 8.4 DB는 2026-11-05 빈 DB에 Flyway V1→V2를 적용해 만들었다(이력 `1:SQL`, `2:SQL`). 신규 DB 검증과 모의 기존 사용자 DB의 baseline/V2 리허설은 2026-10-15에 수행했으며, 기존 사용자 DB가 새로 생기면 그때 구조 대조·복제본 리허설을 진행한다. 모의 JPA 스키마에서는 refresh_token.revoked의 BIT(1)와 V1 BOOLEAN(TINYINT(1)) 차이가 발견됐다. [실제 DB 조사 및 적용 절차](db-migration-existing-users.md)와 [이번 재검증 결과](revalidation/db-migration-2026-10-15.md)를 참고한다.
+
+## 서버 메모리 상태와 시연 전 확인 (2026-11-18, #38)
+
+아래 상태는 DB가 아니라 서버 메모리에만 있다. 서버가 재시작되면 모두 사라진다.
+
+| 상태 | 위치 | 사라지면 |
+|---|---|---|
+| 로그인 세션(JSESSIONID) | 서블릿 세션 | 다시 로그인해야 한다 |
+| 가입·재설정 인증번호 | `EmailVerificationStore` | 인증번호를 다시 받아야 한다 |
+| 가입 인증 완료 상태(30분) | `EmailVerificationStore` | 이메일 인증부터 다시 해야 한다 |
+
+배포 서버(Render 무료 플랜)는 15분 동안 요청이 없으면 잠들고, 다음 요청 때 새로 시작한다. 그래서 잠들었다 깨어나면 위 상태가 사라진다. 서버를 2대 이상으로 늘리면 요청마다 다른 서버로 가서 같은 문제가 생기므로 지금 구조는 1대 운영을 전제로 한다.
+
+**결정:** 캡스톤 기간에는 이 동작을 허용한다. 사용자 수가 적고 1대로 운영하며, 세션을 DB로 옮기려면 테이블 추가와 배포 DB 변경이 필요하기 때문이다. 실제 서비스로 공개하거나 서버를 늘릴 때는 세션과 인증 상태를 DB 등 외부 저장소로 옮긴다.
+
+### 시연 전 확인 절차
+
+1. 시연 10분 전에 Aiven 콘솔에서 DB 서비스가 Running인지 확인한다. 꺼져 있으면 Power on 후 실행 중이 될 때까지 기다린다.
+2. `https://taxi-delivery-sharing.onrender.com/api/csrf`를 열어 200 응답을 확인한다. 잠들어 있으면 첫 응답까지 1~2분 걸린다.
+3. 시연용 계정으로 미리 로그인해 둔다. 시연 중 15분 넘게 요청이 없으면 다시 로그인해야 할 수 있다.
+4. 가입·비밀번호 재설정을 시연하려면 배포 환경에서 학교 메일로 인증번호가 도착하는지 미리 확인한다. 수신이 안 되면 준비된 계정으로 로그인부터 시연한다. 인증번호를 받은 뒤에는 서버가 재시작되지 않도록 바로 이어서 진행한다.
 
 ## PR 및 브랜치
 
