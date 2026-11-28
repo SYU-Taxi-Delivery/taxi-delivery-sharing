@@ -270,6 +270,22 @@ class RecruitmentConsistencyTest {
         rejects(INVALID_QUERY_PARAMETER, () -> query(null, null, null, to, from, false, null));
     }
 
+    @Test void searchIgnoresTabsAndLineBreaksInStoredPlacesAndKeywords() throws Exception {
+        String departure = "태릉\t입구역 7번 출구";
+        long taxiId = taxi(author, 4, TIME, departure, "삼육대학교");
+        long deliveryId = delivery(s1, 6, TIME, "정문 김밥", "후문\r\n픽업 장소");
+
+        mvc.perform(get("/api/posts").param("departure", "태릉입구").with(as(s3)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.items[0].postId").value(String.valueOf(taxiId)))
+            .andExpect(jsonPath("$.data.items[0].departure").value(departure));
+        mvc.perform(get("/api/posts").param("q", "후문\t픽업").with(as(s3)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalElements").value(1))
+            .andExpect(jsonPath("$.data.items[0].postId").value(String.valueOf(deliveryId)));
+    }
+
     @Test void authorLifecycleAndMyPostsOverHttp() throws Exception {
         long id = route(); participation.join(id, s1.getId());
         mvc.perform(post("/api/posts/{id}/close", id).with(as(s1)).with(csrf()))

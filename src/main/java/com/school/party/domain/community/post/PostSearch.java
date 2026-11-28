@@ -3,6 +3,7 @@ package com.school.party.domain.community.post;
 import com.school.party.domain.community.api.*;
 import java.time.*;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -28,6 +29,8 @@ public record PostSearch(String q, String departure, String destination, String 
     /** Text every campus place name contains, normalized like the keywords. */
     public static final String CAMPUS = "삼육대";
     static final int MAX_KEYWORD = 100;
+    // Keep the whitespace characters previously matched by Java's default \s.
+    static final List<String> IGNORED_FRAGMENTS = List.of(" ", "\t", "\n", "\u000B", "\f", "\r", "역");
 
     public static final PostSearch NONE = new PostSearch(null, null, null, null, null, null, null, null, false, Sort.TIME);
 
@@ -44,7 +47,11 @@ public record PostSearch(String q, String departure, String destination, String 
     }
     /** Spaces, letter case and "역" removed: the same normalization the query applies to stored places. */
     public static String normalize(String value) {
-        return value == null ? null : value.replaceAll("\\s+", "").replace("역", "").toLowerCase(Locale.ROOT);
+        if (value == null) return null;
+        for (String fragment : IGNORED_FRAGMENTS) {
+            value = value.replace(fragment, "");
+        }
+        return value.toLowerCase(Locale.ROOT);
     }
     private static String keyword(String value, Instant now) {
         if (value == null || value.isBlank()) return null;
